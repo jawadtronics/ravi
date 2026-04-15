@@ -41,6 +41,13 @@ export function LoginForm() {
       return;
     }
 
+    if (user.user_metadata?.blocked) {
+      await supabase.auth.signOut();
+      setErrorMessage("This account has been blocked. Contact the founder.");
+      setLoading(false);
+      return;
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")

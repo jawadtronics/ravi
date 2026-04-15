@@ -12,7 +12,15 @@ export interface Profile {
   address: string | null;
   role: UserRole;
   center_id: string | null;
+  blocked?: boolean;
   created_at?: string;
+}
+
+export interface EmployeeRecord extends Profile {
+  email: string;
+  blocked: boolean;
+  last_sign_in_at: string | null;
+  blocked_at: string | null;
 }
 
 export interface Center {

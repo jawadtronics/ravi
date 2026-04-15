@@ -108,7 +108,10 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
             folder="car"
             label="Car Image"
             accept="image/*"
+            value={carImageUrl}
+            allowReplace
             onUploaded={setCarImageUrl}
+            onRemoved={() => setCarImageUrl(null)}
           />
         </div>
 

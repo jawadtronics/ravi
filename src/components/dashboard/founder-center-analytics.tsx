@@ -32,6 +32,7 @@ export function FounderCenterAnalytics({ centers }: { centers: Center[] }) {
         showCenterColumn
         centerFilter={selectedCenter === "all" ? null : selectedCenter}
         centerNameById={centerNameById}
+        allowFounderEdits
       />
     </div>
   );

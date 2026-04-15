@@ -13,6 +13,10 @@ export async function getSessionProfile() {
     return { user: null, profile: null } as const;
   }
 
+  if (user.user_metadata?.blocked) {
+    return { user: null, profile: null } as const;
+  }
+
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("id, name, cnic, phone, address, role, center_id, created_at")
@@ -20,6 +24,10 @@ export async function getSessionProfile() {
     .single<Profile>();
 
   if (error || !profile) {
+    return { user: null, profile: null } as const;
+  }
+
+  if ((profile as Profile & { blocked?: boolean }).blocked) {
     return { user: null, profile: null } as const;
   }
 

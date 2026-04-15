@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         address,
         role,
         center_id: centerId,
+        blocked: false,
       },
     });
 

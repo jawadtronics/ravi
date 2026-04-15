@@ -8,6 +8,7 @@ import { Center } from "@/types/app";
 
 interface RegisterPersonFormProps {
   centers: Center[];
+  onSuccess?: () => void | Promise<void>;
 }
 
 const roleOptions = [
@@ -17,7 +18,7 @@ const roleOptions = [
   { label: "Founder", value: "founder" },
 ];
 
-export function RegisterPersonForm({ centers }: RegisterPersonFormProps) {
+export function RegisterPersonForm({ centers, onSuccess }: RegisterPersonFormProps) {
   const [name, setName] = useState("");
   const [cnic, setCnic] = useState("");
   const [email, setEmail] = useState("");
@@ -69,6 +70,7 @@ export function RegisterPersonForm({ centers }: RegisterPersonFormProps) {
     setRole("gate_person");
     setCenterId(centers[0]?.id ?? "");
     setLoading(false);
+    await onSuccess?.();
   }
 
   return (
