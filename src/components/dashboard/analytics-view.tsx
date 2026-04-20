@@ -266,8 +266,8 @@ export function AnalyticsView({
     setSavingEdit(true);
     setEditError(null);
 
-    const parsedW1 = toNumberOrNull(editForm.w1) ?? editingLog.w1;
-    const parsedW2 = toNumberOrNull(editForm.w2) ?? editingLog.w2;
+    const parsedW1: number | null = toNumberOrNull(editForm.w1) ?? editingLog.w1 ?? null;
+    const parsedW2: number | null = toNumberOrNull(editForm.w2) ?? editingLog.w2 ?? null;
     const computedW3 = parsedW1 !== null && parsedW2 !== null ? parsedW1 - parsedW2 : null;
 
     const updates: Partial<WheatLog> = {
@@ -344,8 +344,8 @@ export function AnalyticsView({
       return "-";
     }
 
-    const w1 = toNumberOrNull(editForm.w1) ?? editingLog?.w1;
-    const w2 = toNumberOrNull(editForm.w2) ?? editingLog?.w2;
+    const w1: number | null = toNumberOrNull(editForm.w1) ?? editingLog?.w1 ?? null;
+    const w2: number | null = toNumberOrNull(editForm.w2) ?? editingLog?.w2 ?? null;
 
     if (w1 !== null && w2 !== null) {
       return String(w1 - w2);
