@@ -75,6 +75,10 @@ function renderPictureBox(label: string, url: string | null) {
   return `<img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" crossorigin="anonymous" style="width:38mm;height:38mm;border:1px solid #111827;object-fit:cover;" />`;
 }
 
+function renderLineValue(value: string | number | null | undefined) {
+  return `<span style="display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;">${escapeHtml(displayValue(value))}</span>`;
+}
+
 export async function downloadWheatLogPdf({ log, centerName, gatePersonName, weightManagerName, fileName }: LogPdfOptions) {
   if (typeof document === "undefined") {
     return;
@@ -118,85 +122,85 @@ export async function downloadWheatLogPdf({ log, centerName, gatePersonName, wei
         <div style="font-size:13px;font-weight:700;color:#1f2937;margin-top:1.5mm;">Entry ID: ${escapeHtml(displayValue(log.entry_id))}</div>
       </div>
 
-      <div style="border-top:1px solid #111827;"></div>
+      <div style="border-top:1px solid #111827;margin:1mm 0;"></div>
 
       <div style="display:flex;gap:8mm;">
         <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
           <span style="font-size:13px;font-weight:700;white-space:nowrap;">Farmer:</span>
-          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.farmer_name))}</span>
+          <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.farmer_name)}</span>
         </div>
         <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
           <span style="font-size:13px;font-weight:700;white-space:nowrap;">Portal Id:</span>
-          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.portal_id ?? log.cnic))}</span>
+          <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.portal_id ?? log.cnic)}</span>
         </div>
       </div>
 
       <div style="display:flex;gap:8mm;">
         <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
           <span style="font-size:13px;font-weight:700;white-space:nowrap;">Driver Name:</span>
-          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.driver_name))}</span>
+          <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.driver_name)}</span>
         </div>
         <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
           <span style="font-size:13px;font-weight:700;white-space:nowrap;">Cell No:</span>
-          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.driver_phone ?? log.phone))}</span>
+          <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.driver_phone ?? log.phone)}</span>
         </div>
       </div>
 
-      <div style="border-top:1px solid #111827;"></div>
+      <div style="border-top:1px solid #111827;margin:1mm 0;"></div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6mm;">
         <div style="flex:1;display:flex;flex-direction:column;gap:5mm;padding-right:4mm;">
           <div style="display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">First Weight (W1):</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.w1))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.w1)}</span>
           </div>
           <div style="display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Completion Time:</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(w1Time))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(w1Time)}</span>
           </div>
         </div>
         ${renderPictureBox("Picture 1", w1ImageUrl)}
       </div>
 
-      <div style="border-top:1px solid #111827;"></div>
+      <div style="border-top:1px solid #111827;margin:1mm 0;"></div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6mm;">
         <div style="flex:1;display:flex;flex-direction:column;gap:5mm;padding-right:4mm;">
           <div style="display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Second Weight (W2):</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.w2))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(log.w2)}</span>
           </div>
           <div style="display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Completion Time:</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(w2Time))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(w2Time)}</span>
           </div>
         </div>
         ${renderPictureBox("Picture 2", w2ImageUrl)}
       </div>
 
-      <div style="border-top:1px solid #111827;"></div>
+      <div style="border-top:1px solid #111827;margin:1mm 0;"></div>
 
       <div style="display:flex;flex-direction:column;gap:5mm;">
         <div style="display:flex;align-items:flex-end;gap:2mm;width:72%;">
           <span style="font-size:14px;font-weight:800;white-space:nowrap;">Net Weight:</span>
-          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:14px;font-weight:800;color:#111827;padding-bottom:1mm;">${escapeHtml(displayValue(log.w3))}</span>
+          <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:14px;font-weight:800;color:#111827;padding-bottom:1mm;">${renderLineValue(log.w3)}</span>
         </div>
 
         <div style="display:flex;gap:8mm;">
           <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Gate Person:</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(gatePersonName))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(gatePersonName)}</span>
           </div>
           <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Weight Person:</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(weightManagerName))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(weightManagerName)}</span>
           </div>
         </div>
 
         <div style="display:flex;gap:8mm;">
           <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
             <span style="font-size:13px;font-weight:700;white-space:nowrap;">Gate Entry Time:</span>
-            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(gateEntryTime))}</span>
+            <span style="flex:1;min-width:0;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${renderLineValue(gateEntryTime)}</span>
           </div>
           <div style="flex:1;"></div>
         </div>

@@ -268,7 +268,6 @@ export function AnalyticsView({
 
     const parsedW1: number | null = toNumberOrNull(editForm.w1) ?? editingLog.w1 ?? null;
     const parsedW2: number | null = toNumberOrNull(editForm.w2) ?? editingLog.w2 ?? null;
-    const computedW3 = parsedW1 !== null && parsedW2 !== null ? parsedW1 - parsedW2 : null;
 
     const updates: Partial<WheatLog> = {
       center_id: editForm.center_id.trim() || null,
@@ -288,7 +287,6 @@ export function AnalyticsView({
       w1_time: fromDateTimeLocalValue(editForm.w1_time),
       w2: parsedW2,
       w2_time: fromDateTimeLocalValue(editForm.w2_time),
-      w3: computedW3,
       status: editForm.status,
     };
 

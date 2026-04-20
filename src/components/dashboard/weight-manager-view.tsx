@@ -236,11 +236,9 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
 
     setSaving(true);
 
-    const computedW3 = log.w1 !== null && log.w2 !== null ? log.w1 - log.w2 : null;
-
     const { error } = await supabase
       .from("wheat_logs")
-      .update({ status: "completed", weight_manager_id: managerId, updated_at: new Date().toISOString(), w3: computedW3 })
+      .update({ status: "completed", weight_manager_id: managerId, updated_at: new Date().toISOString() })
       .eq("id", log.id);
 
     if (error) {
@@ -272,11 +270,6 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     }
     if (editKind === "w1_image") updates.w1_image_url = imageUrl;
     if (editKind === "w2_image") updates.w2_image_url = imageUrl;
-
-    const nextW1 = editKind === "w1" ? Number(weightInput) : selectedLog.w1;
-    const nextW2 = editKind === "w2" ? Number(weightInput) : selectedLog.w2;
-
-    updates.w3 = nextW1 !== null && nextW2 !== null ? nextW1 - nextW2 : null;
 
     const { error } = await supabase.from("wheat_logs").update(updates).eq("id", selectedLog.id);
 
