@@ -15,11 +15,11 @@ interface GateFormProps {
 export function GateForm({ gatePersonId, centerId }: GateFormProps) {
   const supabase = createClient();
 
+  const [farmerName, setFarmerName] = useState("");
+  const [portalId, setPortalId] = useState("");
   const [driverName, setDriverName] = useState("");
-  const [cnic, setCnic] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [carPlate, setCarPlate] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
+  const [vehiclePhone, setVehiclePhone] = useState("");
   const [expectedBags, setExpectedBags] = useState("");
   const [carImageUrl, setCarImageUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -41,11 +41,14 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
     const { error: insertError } = await supabase.from("wheat_logs").insert({
       center_id: centerId,
       gate_person_id: gatePersonId,
+      farmer_name: farmerName,
+      portal_id: portalId,
       driver_name: driverName,
-      cnic,
-      phone,
-      address,
-      car_plate: carPlate,
+      driver_phone: driverPhone,
+      vehicle_phone: vehiclePhone,
+      cnic: portalId,
+      phone: driverPhone,
+      car_plate: vehiclePhone,
       car_image_url: carImageUrl,
       expected_bags: Number(expectedBags),
       status: "pending",
@@ -57,11 +60,11 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
       return;
     }
 
+    setFarmerName("");
+    setPortalId("");
     setDriverName("");
-    setCnic("");
-    setPhone("");
-    setAddress("");
-    setCarPlate("");
+    setDriverPhone("");
+    setVehiclePhone("");
     setExpectedBags("");
     setCarImageUrl(null);
     setMessage("Vehicle log submitted successfully.");
@@ -73,24 +76,24 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
       <h2 className="mb-4 text-xl font-bold text-slate-900">Incoming Vehicle Registration</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Farmer Name</label>
+          <Input required value={farmerName} onChange={(e) => setFarmerName(e.target.value)} />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Portal ID</label>
+          <Input required value={portalId} onChange={(e) => setPortalId(e.target.value)} />
+        </div>
+        <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Driver Name</label>
           <Input required value={driverName} onChange={(e) => setDriverName(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">CNIC</label>
-          <Input required value={cnic} onChange={(e) => setCnic(e.target.value)} />
+          <label className="mb-1 block text-sm font-medium text-slate-700">Driver Phone</label>
+          <Input required value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Phone Number</label>
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Address</label>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Car Number Plate</label>
-          <Input required value={carPlate} onChange={(e) => setCarPlate(e.target.value)} />
+          <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Phone</label>
+          <Input required value={vehiclePhone} onChange={(e) => setVehiclePhone(e.target.value)} />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Expected Wheat Bags</label>
@@ -106,7 +109,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
           <FileUpload
             bucket="wheat-images"
             folder="car"
-            label="Car Image"
+            label="Upload Picture"
             accept="image/*"
             value={carImageUrl}
             allowReplace

@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { FileUpload } from "@/components/dashboard/file-upload";
+import { downloadWheatLogPdf } from "@/lib/log-pdf";
 
 type Tab = "realtime" | "history";
 
-type EditKind = "bags" | "w1" | "w1_image" | "w2" | "w2_image";
+type EditKind = "bags" | "second_godown" | "w1" | "w1_image" | "w2" | "w2_image";
 
 export function WeightManagerView({ managerId, centerId }: { managerId: string; centerId: string | null }) {
   const supabase = useMemo(() => createClient(), []);
@@ -30,6 +31,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
+  const [centerNameById, setCenterNameById] = useState<Record<string, string>>({});
   const [pageError, setPageError] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async () => {
@@ -103,6 +105,30 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     };
   }, [historyLogs, pendingLogs, supabase]);
 
+  useEffect(() => {
+    const centerIds = Array.from(new Set([...pendingLogs, ...historyLogs].map((log) => log.center_id).filter((value): value is string => Boolean(value))));
+
+    if (!centerIds.length) {
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      const { data } = await supabase.from("centers").select("id, name").in("id", centerIds);
+
+      if (!active) {
+        return;
+      }
+
+      setCenterNameById(Object.fromEntries((data ?? []).map((center) => [center.id, center.name ?? center.id])));
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [historyLogs, pendingLogs, supabase]);
+
   function openEdit(log: WheatLog, kind: EditKind) {
     setPageError(null);
     setSelectedLog(log);
@@ -110,6 +136,8 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     setWeightInput(
       kind === "bags"
         ? String(log.expected_bags ?? "")
+        : kind === "second_godown"
+          ? String(log.second_godown ?? "")
         : kind === "w1"
           ? String(log.w1 ?? "")
           : kind === "w2"
@@ -128,14 +156,22 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
 
   const visiblePendingLogs = pendingLogs.filter((log) => {
     const searchText = [
+      log.entry_id,
+      log.farmer_name,
+      log.portal_id,
       log.driver_name,
+      log.driver_phone,
+      log.vehicle_phone,
       log.cnic,
       log.phone,
       log.address,
       log.car_plate,
       String(log.expected_bags),
+      String(log.second_godown ?? ""),
       String(log.w1 ?? ""),
+      formatDateTime(log.w1_time ?? ""),
       String(log.w2 ?? ""),
+      formatDateTime(log.w2_time ?? ""),
       String(log.w3 ?? ""),
       formatDateTime(log.created_at),
       formatDateTime(log.updated_at),
@@ -151,14 +187,22 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
 
   const visibleHistoryLogs = historyLogs.filter((log) => {
     const searchText = [
+      log.entry_id,
+      log.farmer_name,
+      log.portal_id,
       log.driver_name,
+      log.driver_phone,
+      log.vehicle_phone,
       log.cnic,
       log.phone,
       log.address,
       log.car_plate,
       String(log.expected_bags),
+      String(log.second_godown ?? ""),
       String(log.w1 ?? ""),
+      formatDateTime(log.w1_time ?? ""),
       String(log.w2 ?? ""),
+      formatDateTime(log.w2_time ?? ""),
       String(log.w3 ?? ""),
       formatDateTime(log.created_at),
       formatDateTime(log.updated_at),
@@ -172,6 +216,16 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     return searchText.includes(searchQuery.toLowerCase().trim());
   });
 
+  async function handlePrint(log: WheatLog) {
+    await downloadWheatLogPdf({
+      log,
+      centerName: centerNameById[log.center_id ?? ""] ?? log.center_id ?? null,
+      gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
+      weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
+      fileName: `weight-log-${log.driver_name.replaceAll(" ", "-").toLowerCase()}.pdf`,
+    });
+  }
+
   async function completeLog(log: WheatLog) {
     setPageError(null);
 
@@ -182,9 +236,11 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
 
     setSaving(true);
 
+    const computedW3 = log.w1 !== null && log.w2 !== null ? log.w1 - log.w2 : null;
+
     const { error } = await supabase
       .from("wheat_logs")
-      .update({ status: "completed", weight_manager_id: managerId, updated_at: new Date().toISOString() })
+      .update({ status: "completed", weight_manager_id: managerId, updated_at: new Date().toISOString(), w3: computedW3 })
       .eq("id", log.id);
 
     if (error) {
@@ -205,10 +261,22 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     const updates: Partial<WheatLog> = { weight_manager_id: managerId };
 
     if (editKind === "bags") updates.expected_bags = Number(weightInput);
-    if (editKind === "w1") updates.w1 = Number(weightInput);
-    if (editKind === "w2") updates.w2 = Number(weightInput);
+    if (editKind === "second_godown") updates.second_godown = Number(weightInput);
+    if (editKind === "w1") {
+      updates.w1 = Number(weightInput);
+      updates.w1_time = new Date().toISOString();
+    }
+    if (editKind === "w2") {
+      updates.w2 = Number(weightInput);
+      updates.w2_time = new Date().toISOString();
+    }
     if (editKind === "w1_image") updates.w1_image_url = imageUrl;
     if (editKind === "w2_image") updates.w2_image_url = imageUrl;
+
+    const nextW1 = editKind === "w1" ? Number(weightInput) : selectedLog.w1;
+    const nextW2 = editKind === "w2" ? Number(weightInput) : selectedLog.w2;
+
+    updates.w3 = nextW1 !== null && nextW2 !== null ? nextW1 - nextW2 : null;
 
     const { error } = await supabase.from("wheat_logs").update(updates).eq("id", selectedLog.id);
 
@@ -247,15 +315,18 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <thead>
               <tr className="bg-slate-100 text-left">
                 {[
+                  "Entry ID",
                   "Gate Entry Time",
                   "Completion Time",
-                  "Name",
-                  "CNIC",
-                  "Phone",
-                  "Car Plate",
+                  "Farmer Name",
+                  "Portal ID",
+                  "Driver Name",
+                  "Driver Phone",
+                  "Vehicle Phone",
                   "Gate Person",
                   "Car Image",
                   "Bags",
+                  "2nd Godown",
                   "W1",
                   "W1 Image",
                   "W2",
@@ -269,12 +340,14 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <tbody>
               {visiblePendingLogs.map((log) => (
                 <tr key={log.id} className="align-top">
+                  <td className="border border-slate-200 px-2 py-2">{log.entry_id ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.created_at)}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.status === "completed" ? formatDateTime(log.updated_at) : "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.cnic}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.phone ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.car_plate}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">
                     {log.car_image_url ? (
@@ -289,6 +362,14 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                     <div className="flex items-center gap-2">
                       <p>{log.expected_bags}</p>
                       <button className="text-amber-700" onClick={() => openEdit(log, "bags")} disabled={log.status === "completed"}>
+                        ✏️
+                      </button>
+                    </div>
+                  </td>
+                  <td className="border border-slate-200 px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      <p>{log.second_godown ?? "-"}</p>
+                      <button className="text-amber-700" onClick={() => openEdit(log, "second_godown")} disabled={log.status === "completed"}>
                         ✏️
                       </button>
                     </div>
@@ -359,15 +440,20 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <thead>
               <tr className="bg-slate-100 text-left">
                 {[
+                  "Entry ID",
                   "Gate Entry Time",
                   "Completion Time",
-                  "Name",
+                  "Farmer Name",
+                  "Portal ID",
+                  "Driver Name",
                   "Gate Person",
-                  "Car",
+                  "Vehicle Phone",
                   "Bags",
+                  "2nd Godown",
                   "W1",
                   "W2",
                   "W3",
+                  "Print Receipt",
                 ].map((head) => (
                   <th key={head} className="border border-slate-200 px-2 py-2">{head}</th>
                 ))}
@@ -376,15 +462,24 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <tbody>
               {visibleHistoryLogs.map((log) => (
                 <tr key={log.id}>
+                  <td className="border border-slate-200 px-2 py-2">{log.entry_id ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.created_at)}</td>
                   <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.updated_at)}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
                   <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.car_plate}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.expected_bags}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w1 ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w2 ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">
+                    <Button type="button" variant="secondary" onClick={() => void handlePrint(log)}>
+                      Print
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -397,6 +492,8 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
         title={
           editKind === "bags"
             ? "Update expected bags"
+            : editKind === "second_godown"
+              ? "Update 2nd godown"
             : editKind === "w1"
             ? "Enter W1 weight"
             : editKind === "w2"
@@ -406,12 +503,14 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                 : "Take/Upload Picture of W2"
         }
         onClose={closeEdit}
-          showCloseButton={false}
+        showCloseButton={false}
       >
         <div className="space-y-4">
-          {editKind === "bags" || editKind === "w1" || editKind === "w2" ? (
+          {editKind === "bags" || editKind === "second_godown" || editKind === "w1" || editKind === "w2" ? (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">{editKind === "bags" ? "Bag count" : "Weight value"}</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                {editKind === "bags" ? "Bag count" : editKind === "second_godown" ? "2nd godown value" : "Weight value"}
+              </label>
               <Input
                 type="number"
                 step={editKind === "bags" ? "1" : "0.01"}
@@ -425,10 +524,10 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
               folder={editKind === "w1_image" ? "w1" : "w2"}
               label="Weight slip image"
               accept="image/*"
-                value={imageUrl}
-                allowReplace={false}
+              value={imageUrl}
+              allowReplace={false}
               onUploaded={setImageUrl}
-                onRemoved={() => setImageUrl(null)}
+              onRemoved={() => setImageUrl(null)}
             />
           )}
           <div className="flex items-center justify-end gap-3">
@@ -436,7 +535,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <Button
               onClick={submitEdit}
               loading={saving}
-              disabled={editKind === "bags" || editKind === "w1" || editKind === "w2" ? !weightInput : !imageUrl}
+              disabled={editKind === "bags" || editKind === "second_godown" || editKind === "w1" || editKind === "w2" ? !weightInput : !imageUrl}
             >
               Submit
             </Button>

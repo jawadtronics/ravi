@@ -18,6 +18,15 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
+function displayValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+
+  const text = String(value).trim();
+  return text ? text : "-";
+}
+
 async function waitForImages(root: HTMLElement) {
   const images = Array.from(root.querySelectorAll("img"));
 
@@ -58,17 +67,12 @@ async function toDataUrl(url: string) {
   }
 }
 
-function renderImageCard(label: string, url: string | null) {
+function renderPictureBox(label: string, url: string | null) {
   if (!url) {
-    return `<div style="border:1px solid #d1d5db;border-radius:14px;padding:14px;background:#f8fafc;color:#64748b;">${escapeHtml(label)} not uploaded</div>`;
+    return `<div style="width:38mm;height:38mm;border:1px solid #111827;display:flex;align-items:center;justify-content:center;font-size:12px;color:#374151;">${escapeHtml(label)}</div>`;
   }
 
-  return `
-    <div style="border:1px solid #d1d5db;border-radius:14px;padding:10px;background:#fff;">
-      <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">${escapeHtml(label)}</div>
-      <img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" crossorigin="anonymous" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;" />
-    </div>
-  `;
+  return `<img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" crossorigin="anonymous" style="width:38mm;height:38mm;border:1px solid #111827;object-fit:cover;" />`;
 }
 
 export async function downloadWheatLogPdf({ log, centerName, gatePersonName, weightManagerName, fileName }: LogPdfOptions) {
@@ -76,8 +80,7 @@ export async function downloadWheatLogPdf({ log, centerName, gatePersonName, wei
     return;
   }
 
-  const [carImageUrl, w1ImageUrl, w2ImageUrl] = await Promise.all([
-    log.car_image_url ? toDataUrl(log.car_image_url) : Promise.resolve(null),
+  const [w1ImageUrl, w2ImageUrl] = await Promise.all([
     log.w1_image_url ? toDataUrl(log.w1_image_url) : Promise.resolve(null),
     log.w2_image_url ? toDataUrl(log.w2_image_url) : Promise.resolve(null),
   ]);
@@ -95,55 +98,112 @@ export async function downloadWheatLogPdf({ log, centerName, gatePersonName, wei
   host.style.zIndex = "-1";
 
   const page = document.createElement("div");
-  page.style.width = "794px";
+  page.style.width = "210mm";
+  page.style.height = "297mm";
   page.style.background = "#ffffff";
-  page.style.padding = "24px";
+  page.style.margin = "0";
+  page.style.padding = "0";
   page.style.color = "#0f172a";
-  page.style.fontFamily = "Arial, sans-serif";
+  page.style.fontFamily = "Segoe UI, Tahoma, Arial, sans-serif";
+
+  const w1Time = log.w1_time ? formatDateTime(log.w1_time) : "-";
+  const w2Time = log.w2_time ? formatDateTime(log.w2_time) : "-";
+  const gateEntryTime = formatDateTime(log.created_at);
+
   page.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px;border-bottom:2px solid #e2e8f0;padding-bottom:16px;break-inside:avoid;">
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#b45309,#f59e0b);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;">NM</div>
-        <div>
-          <div style="font-size:22px;font-weight:900;letter-spacing:0.02em;">N&amp;M Flour Mills</div>
-          <div style="font-size:13px;color:#475569;">Wheat Vehicle Record</div>
+    <div style="position:relative;width:210mm;height:148.5mm;padding:10mm 12mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#ffffff;color:#000000;">
+      <div style="text-align:center;">
+        <div style="font-size:24px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">Center Weightment Slip</div>
+        <div style="font-size:17px;font-weight:600;color:#111827;margin-top:2mm;">${escapeHtml(displayValue(centerName))}</div>
+        <div style="font-size:13px;font-weight:700;color:#1f2937;margin-top:1.5mm;">Entry ID: ${escapeHtml(displayValue(log.entry_id))}</div>
+      </div>
+
+      <div style="border-top:1px solid #111827;"></div>
+
+      <div style="display:flex;gap:8mm;">
+        <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+          <span style="font-size:13px;font-weight:700;white-space:nowrap;">Farmer:</span>
+          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.farmer_name))}</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+          <span style="font-size:13px;font-weight:700;white-space:nowrap;">Portal Id:</span>
+          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.portal_id ?? log.cnic))}</span>
         </div>
       </div>
-      <div style="text-align:right;font-size:12px;color:#475569;">
-        <div><strong>Status:</strong> ${escapeHtml(log.status)}</div>
-        <div><strong>Generated:</strong> ${escapeHtml(formatDateTime(new Date().toISOString()))}</div>
-      </div>
-    </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
-      ${renderImageCard("Car Image", carImageUrl)}
-      ${renderImageCard("W1 Image", w1ImageUrl)}
-      ${renderImageCard("W2 Image", w2ImageUrl)}
-      <div style="border:1px solid #d1d5db;border-radius:14px;padding:14px;background:#f8fafc;">
-        <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:10px;">Key Details</div>
-        <div style="display:grid;gap:8px;font-size:13px;color:#334155;">
-          <div><strong>Driver Name:</strong> ${escapeHtml(log.driver_name)}</div>
-          <div><strong>CNIC:</strong> ${escapeHtml(log.cnic)}</div>
-          <div><strong>Phone:</strong> ${escapeHtml(log.phone ?? "-")}</div>
-          <div><strong>Address:</strong> ${escapeHtml(log.address ?? "-")}</div>
-          <div><strong>Car Plate:</strong> ${escapeHtml(log.car_plate)}</div>
-          <div><strong>Center:</strong> ${escapeHtml(centerName ?? "-")}</div>
-          <div><strong>Gate Person:</strong> ${escapeHtml(gatePersonName ?? "-")}</div>
-          <div><strong>Weight Manager:</strong> ${escapeHtml(weightManagerName ?? "-")}</div>
+      <div style="display:flex;gap:8mm;">
+        <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+          <span style="font-size:13px;font-weight:700;white-space:nowrap;">Driver Name:</span>
+          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.driver_name))}</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+          <span style="font-size:13px;font-weight:700;white-space:nowrap;">Cell No:</span>
+          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.driver_phone ?? log.phone))}</span>
         </div>
       </div>
-    </div>
 
-    <table style="width:100%;border-collapse:collapse;font-size:13px;">
-      <tbody>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">Gate Entry Time</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(formatDateTime(log.created_at))}</td></tr>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">Weight Completion Time</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(log.status === "completed" ? formatDateTime(log.updated_at) : "-")}</td></tr>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">Expected Bags</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(String(log.expected_bags))}</td></tr>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">W1</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(log.w1 === null || log.w1 === undefined ? "-" : String(log.w1))}</td></tr>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">W2</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(log.w2 === null || log.w2 === undefined ? "-" : String(log.w2))}</td></tr>
-        <tr><td style="border:1px solid #cbd5e1;padding:10px;background:#f8fafc;font-weight:700;">W3</td><td style="border:1px solid #cbd5e1;padding:10px;">${escapeHtml(log.w3 === null || log.w3 === undefined ? "-" : String(log.w3))}</td></tr>
-      </tbody>
-    </table>
+      <div style="border-top:1px solid #111827;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6mm;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:5mm;padding-right:4mm;">
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">First Weight (W1):</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.w1))}</span>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Completion Time:</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(w1Time))}</span>
+          </div>
+        </div>
+        ${renderPictureBox("Picture 1", w1ImageUrl)}
+      </div>
+
+      <div style="border-top:1px solid #111827;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6mm;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:5mm;padding-right:4mm;">
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Second Weight (W2):</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(log.w2))}</span>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Completion Time:</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(w2Time))}</span>
+          </div>
+        </div>
+        ${renderPictureBox("Picture 2", w2ImageUrl)}
+      </div>
+
+      <div style="border-top:1px solid #111827;"></div>
+
+      <div style="display:flex;flex-direction:column;gap:5mm;">
+        <div style="display:flex;align-items:flex-end;gap:2mm;width:72%;">
+          <span style="font-size:14px;font-weight:800;white-space:nowrap;">Net Weight:</span>
+          <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:14px;font-weight:800;color:#111827;padding-bottom:1mm;">${escapeHtml(displayValue(log.w3))}</span>
+        </div>
+
+        <div style="display:flex;gap:8mm;">
+          <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Gate Person:</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(gatePersonName))}</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Weight Person:</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(weightManagerName))}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8mm;">
+          <div style="flex:1;display:flex;align-items:flex-end;gap:2mm;">
+            <span style="font-size:13px;font-weight:700;white-space:nowrap;">Gate Entry Time:</span>
+            <span style="flex:1;border-bottom:1px solid #6b7280;text-align:center;font-size:13px;color:#1f2937;padding-bottom:1mm;">${escapeHtml(displayValue(gateEntryTime))}</span>
+          </div>
+          <div style="flex:1;"></div>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;border-bottom:1px dashed #111827;"></div>
+    </div>
   `;
 
   host.appendChild(page);
@@ -154,7 +214,7 @@ export async function downloadWheatLogPdf({ log, centerName, gatePersonName, wei
 
   await html2pdf()
     .set({
-      margin: 6,
+      margin: 0,
       filename: saveName,
       image: { type: "jpeg", quality: 0.98 },
       pagebreak: { mode: ["css", "legacy"] },

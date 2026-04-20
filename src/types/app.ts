@@ -31,19 +31,27 @@ export interface Center {
 
 export interface WheatLog {
   id: string;
+  entry_id: string | null;
   center_id: string | null;
   gate_person_id: string | null;
   weight_manager_id: string | null;
+  farmer_name: string | null;
+  portal_id: string | null;
   driver_name: string;
+  driver_phone: string | null;
+  vehicle_phone: string | null;
   cnic: string;
   phone: string | null;
   address: string | null;
   car_plate: string;
   car_image_url: string | null;
   expected_bags: number;
+  second_godown: number | null;
   w1: number | null;
+  w1_time: string | null;
   w1_image_url: string | null;
   w2: number | null;
+  w2_time: string | null;
   w2_image_url: string | null;
   w3: number | null;
   status: "pending" | "completed";

@@ -23,16 +23,23 @@ type FounderEditForm = {
   center_id: string;
   gate_person_id: string;
   weight_manager_id: string;
+  farmer_name: string;
+  portal_id: string;
   driver_name: string;
-  cnic: string;
-  phone: string;
-  address: string;
-  car_plate: string;
+  driver_phone: string;
+  vehicle_phone: string;
   expected_bags: string;
+  second_godown: string;
   w1: string;
+  w1_time: string;
   w2: string;
-  w3: string;
+  w2_time: string;
   status: "pending" | "completed";
+};
+
+type EmployeeOption = {
+  id: string;
+  name: string;
 };
 
 function toNumberOrNull(value: string) {
@@ -48,6 +55,24 @@ function toNumberOrNull(value: string) {
 function toNumberOrFallback(value: string, fallback: number) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocalValue(value: string) {
+  return value ? new Date(value).toISOString() : null;
 }
 
 export function AnalyticsView({
@@ -67,12 +92,21 @@ export function AnalyticsView({
   const [editForm, setEditForm] = useState<FounderEditForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [gatePersonOptions, setGatePersonOptions] = useState<EmployeeOption[]>([]);
+  const [weightManagerOptions, setWeightManagerOptions] = useState<EmployeeOption[]>([]);
+
+  const centerOptions = useMemo(
+    () =>
+      Object.entries(centerNameById ?? {})
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [centerNameById],
+  );
 
   const fetchLogs = useCallback(async () => {
     let query = supabase
       .from("wheat_logs")
       .select("*")
-      .eq("status", "completed")
       .order("created_at", { ascending: false });
 
     if (centerId) query = query.eq("center_id", centerId);
@@ -115,19 +149,63 @@ export function AnalyticsView({
     };
   }, [logs, supabase]);
 
+  useEffect(() => {
+    if (!allowFounderEdits) {
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name, role")
+        .in("role", ["gate_person", "weight_manager"])
+        .order("name", { ascending: true });
+
+      if (!active) {
+        return;
+      }
+
+      const options = (data ?? []) as Array<{ id: string; name: string | null; role: string }>;
+      setGatePersonOptions(
+        options
+          .filter((entry) => entry.role === "gate_person")
+          .map((entry) => ({ id: entry.id, name: entry.name ?? entry.id })),
+      );
+      setWeightManagerOptions(
+        options
+          .filter((entry) => entry.role === "weight_manager")
+          .map((entry) => ({ id: entry.id, name: entry.name ?? entry.id })),
+      );
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [allowFounderEdits, supabase]);
+
   const totalBags = logs.reduce((sum, log) => sum + (log.expected_bags ?? 0), 0);
   const totalWeight = logs.reduce((sum, log) => sum + Number(log.w3 ?? 0), 0);
 
   const visibleLogs = logs.filter((log) => {
     const searchText = [
+      log.entry_id,
+      log.farmer_name,
+      log.portal_id,
       log.driver_name,
+      log.driver_phone,
+      log.vehicle_phone,
       log.cnic,
       log.phone,
       log.address,
       log.car_plate,
       String(log.expected_bags),
+      String(log.second_godown ?? ""),
       String(log.w1 ?? ""),
+      formatDateTime(log.w1_time ?? ""),
       String(log.w2 ?? ""),
+      formatDateTime(log.w2_time ?? ""),
       String(log.w3 ?? ""),
       formatDateTime(log.created_at),
       formatDateTime(log.updated_at),
@@ -159,15 +237,17 @@ export function AnalyticsView({
       center_id: log.center_id ?? "",
       gate_person_id: log.gate_person_id ?? "",
       weight_manager_id: log.weight_manager_id ?? "",
+      farmer_name: log.farmer_name ?? "",
+      portal_id: log.portal_id ?? log.cnic ?? "",
       driver_name: log.driver_name,
-      cnic: log.cnic,
-      phone: log.phone ?? "",
-      address: log.address ?? "",
-      car_plate: log.car_plate,
+      driver_phone: log.driver_phone ?? log.phone ?? "",
+      vehicle_phone: log.vehicle_phone ?? log.car_plate ?? "",
       expected_bags: String(log.expected_bags ?? ""),
+      second_godown: log.second_godown === null || log.second_godown === undefined ? "" : String(log.second_godown),
       w1: log.w1 === null || log.w1 === undefined ? "" : String(log.w1),
+      w1_time: toDateTimeLocalValue(log.w1_time),
       w2: log.w2 === null || log.w2 === undefined ? "" : String(log.w2),
-      w3: log.w3 === null || log.w3 === undefined ? "" : String(log.w3),
+      w2_time: toDateTimeLocalValue(log.w2_time),
       status: log.status,
     });
   }
@@ -186,19 +266,29 @@ export function AnalyticsView({
     setSavingEdit(true);
     setEditError(null);
 
+    const parsedW1 = toNumberOrNull(editForm.w1) ?? editingLog.w1;
+    const parsedW2 = toNumberOrNull(editForm.w2) ?? editingLog.w2;
+    const computedW3 = parsedW1 !== null && parsedW2 !== null ? parsedW1 - parsedW2 : null;
+
     const updates: Partial<WheatLog> = {
       center_id: editForm.center_id.trim() || null,
       gate_person_id: editForm.gate_person_id.trim() || null,
       weight_manager_id: editForm.weight_manager_id.trim() || null,
+      farmer_name: editForm.farmer_name.trim() || null,
+      portal_id: editForm.portal_id.trim() || null,
       driver_name: editForm.driver_name.trim() || editingLog.driver_name,
-      cnic: editForm.cnic.trim() || editingLog.cnic,
-      phone: editForm.phone.trim() || null,
-      address: editForm.address.trim() || null,
-      car_plate: editForm.car_plate.trim() || editingLog.car_plate,
+      driver_phone: editForm.driver_phone.trim() || null,
+      vehicle_phone: editForm.vehicle_phone.trim() || null,
+      cnic: editForm.portal_id.trim() || editingLog.cnic,
+      phone: editForm.driver_phone.trim() || null,
+      car_plate: editForm.vehicle_phone.trim() || editingLog.car_plate,
       expected_bags: toNumberOrFallback(editForm.expected_bags, editingLog.expected_bags),
-      w1: toNumberOrNull(editForm.w1),
-      w2: toNumberOrNull(editForm.w2),
-      w3: toNumberOrNull(editForm.w3),
+      second_godown: toNumberOrNull(editForm.second_godown),
+      w1: parsedW1,
+      w1_time: fromDateTimeLocalValue(editForm.w1_time),
+      w2: parsedW2,
+      w2_time: fromDateTimeLocalValue(editForm.w2_time),
+      w3: computedW3,
       status: editForm.status,
     };
 
@@ -217,19 +307,25 @@ export function AnalyticsView({
 
   function exportData(type: "csv" | "xlsx") {
     const rows = visibleLogs.map((log) => ({
+      "Entry ID": log.entry_id ?? "",
       "Gate Entry Time": formatDateTime(log.created_at),
       "Completion Time": log.status === "completed" ? formatDateTime(log.updated_at) : "",
       Center: centerNameById?.[log.center_id ?? ""] ?? "-",
       "Gate Person": employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-",
       "Weight Manager": employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? "-",
-      Name: log.driver_name,
-      CNIC: log.cnic,
-      Phone: log.phone ?? "",
-      CarPlate: log.car_plate,
+      "Farmer Name": log.farmer_name ?? "",
+      "Portal ID": log.portal_id ?? log.cnic ?? "",
+      "Driver Name": log.driver_name,
+      "Driver Phone": log.driver_phone ?? log.phone ?? "",
+      "Vehicle Phone": log.vehicle_phone ?? log.car_plate ?? "",
       Bags: log.expected_bags,
+      "2nd Godown": log.second_godown,
       W1: log.w1,
+      "Weight 1 Time": log.w1_time ? formatDateTime(log.w1_time) : "",
       W2: log.w2,
+      "Weight 2 Time": log.w2_time ? formatDateTime(log.w2_time) : "",
       W3: log.w3,
+      Status: log.status,
     }));
 
     const sheet = XLSX.utils.json_to_sheet(rows);
@@ -242,6 +338,25 @@ export function AnalyticsView({
       XLSX.writeFile(workbook, "wheat_logs.csv", { bookType: "csv" });
     }
   }
+
+  const computedNetWeight = (() => {
+    if (!editForm) {
+      return "-";
+    }
+
+    const w1 = toNumberOrNull(editForm.w1) ?? editingLog?.w1;
+    const w2 = toNumberOrNull(editForm.w2) ?? editingLog?.w2;
+
+    if (w1 !== null && w2 !== null) {
+      return String(w1 - w2);
+    }
+
+    if (editingLog?.w3 === null || editingLog?.w3 === undefined) {
+      return "-";
+    }
+
+    return String(editingLog.w3);
+  })();
 
   return (
     <div className="space-y-4">
@@ -283,19 +398,24 @@ export function AnalyticsView({
           <thead>
             <tr className="bg-slate-100 text-left">
               {[
+                "Entry ID",
                 "Gate Entry Time",
                 "Completion Time",
                 ...(showCenterColumn ? ["Center"] : []),
                 "Gate Person",
-                "Name",
-                "CNIC",
-                "Phone",
-                "Car Plate",
+                "Farmer Name",
+                "Portal ID",
+                "Driver Name",
+                "Driver Phone",
+                "Vehicle Phone",
                 "Car Image",
                 "Bags",
+                "2nd Godown",
                 "W1",
+                "Weight 1 Time",
                 "W1 Image",
                 "W2",
+                "Weight 2 Time",
                 "W2 Image",
                 "W3",
                 "Print",
@@ -308,21 +428,26 @@ export function AnalyticsView({
           <tbody>
             {visibleLogs.map((log) => (
               <tr key={log.id}>
+                <td className="border border-slate-200 px-2 py-2">{log.entry_id ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.created_at)}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.status === "completed" ? formatDateTime(log.updated_at) : "-"}</td>
                 {showCenterColumn ? (
                   <td className="border border-slate-200 px-2 py-2">{centerNameById?.[log.center_id ?? ""] ?? "-"}</td>
                 ) : null}
                 <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.cnic}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.phone ?? "-"}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.car_plate}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.car_image_url ? <a href={log.car_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.expected_bags}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1 ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.w1_time ? formatDateTime(log.w1_time) : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1_image_url ? <a href={log.w1_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w2 ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.w2_time ? formatDateTime(log.w2_time) : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w2_image_url ? <a href={log.w2_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">
@@ -350,6 +475,24 @@ export function AnalyticsView({
 
             <div className="grid gap-3 md:grid-cols-2">
               <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Entry ID</label>
+                <Input value={editingLog?.entry_id ?? "-"} disabled />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Farmer Name</label>
+                <Input
+                  value={editForm.farmer_name}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, farmer_name: event.target.value } : prev))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Portal ID</label>
+                <Input
+                  value={editForm.portal_id}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, portal_id: event.target.value } : prev))}
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Driver Name</label>
                 <Input
                   value={editForm.driver_name}
@@ -357,53 +500,63 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">CNIC</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Driver Phone</label>
                 <Input
-                  value={editForm.cnic}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, cnic: event.target.value } : prev))}
+                  value={editForm.driver_phone}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, driver_phone: event.target.value } : prev))}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Phone</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Phone</label>
                 <Input
-                  value={editForm.phone}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, phone: event.target.value } : prev))}
+                  value={editForm.vehicle_phone}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, vehicle_phone: event.target.value } : prev))}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Car Plate</label>
-                <Input
-                  value={editForm.car_plate}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, car_plate: event.target.value } : prev))}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Address</label>
-                <Input
-                  value={editForm.address}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, address: event.target.value } : prev))}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Center Id</label>
-                <Input
+                <label className="mb-1 block text-sm font-medium text-slate-700">Center</label>
+                <select
                   value={editForm.center_id}
                   onChange={(event) => setEditForm((prev) => (prev ? { ...prev, center_id: event.target.value } : prev))}
-                />
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Unassigned</option>
+                  {centerOptions.map((center) => (
+                    <option key={center.id} value={center.id}>
+                      {center.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Gate Person Id</label>
-                <Input
+                <label className="mb-1 block text-sm font-medium text-slate-700">Gate Person</label>
+                <select
                   value={editForm.gate_person_id}
                   onChange={(event) => setEditForm((prev) => (prev ? { ...prev, gate_person_id: event.target.value } : prev))}
-                />
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Unassigned</option>
+                  {gatePersonOptions.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Weight Manager Id</label>
-                <Input
+                <label className="mb-1 block text-sm font-medium text-slate-700">Weight Manager</label>
+                <select
                   value={editForm.weight_manager_id}
                   onChange={(event) => setEditForm((prev) => (prev ? { ...prev, weight_manager_id: event.target.value } : prev))}
-                />
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Unassigned</option>
+                  {weightManagerOptions.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
@@ -429,12 +582,29 @@ export function AnalyticsView({
                 />
               </div>
               <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">2nd Godown</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.second_godown}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, second_godown: event.target.value } : prev))}
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">W1</label>
                 <Input
                   type="number"
                   step="0.01"
                   value={editForm.w1}
                   onChange={(event) => setEditForm((prev) => (prev ? { ...prev, w1: event.target.value } : prev))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Weight 1 Time</label>
+                <Input
+                  type="datetime-local"
+                  value={editForm.w1_time}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, w1_time: event.target.value } : prev))}
                 />
               </div>
               <div>
@@ -447,13 +617,16 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">W3</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Weight 2 Time</label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  value={editForm.w3}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, w3: event.target.value } : prev))}
+                  type="datetime-local"
+                  value={editForm.w2_time}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, w2_time: event.target.value } : prev))}
                 />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">W3 (Auto = W1 - W2)</label>
+                <Input value={computedNetWeight} disabled />
               </div>
             </div>
 
