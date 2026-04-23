@@ -17,6 +17,7 @@ interface AnalyticsViewProps {
   centerFilter?: string | null;
   centerNameById?: Record<string, string>;
   allowFounderEdits?: boolean;
+  currentUserId?: string | null;
 }
 
 type FounderEditForm = {
@@ -81,6 +82,7 @@ export function AnalyticsView({
   centerFilter,
   centerNameById,
   allowFounderEdits = false,
+  currentUserId,
 }: AnalyticsViewProps) {
   const supabase = useMemo(() => createClient(), []);
   const [startDate, setStartDate] = useState("");
@@ -88,6 +90,7 @@ export function AnalyticsView({
   const [searchQuery, setSearchQuery] = useState("");
   const [logs, setLogs] = useState<WheatLog[]>([]);
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
+  const [founderNameById, setFounderNameById] = useState<Record<string, string>>({});
   const [editingLog, setEditingLog] = useState<WheatLog | null>(null);
   const [editForm, setEditForm] = useState<FounderEditForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -184,6 +187,32 @@ export function AnalyticsView({
       active = false;
     };
   }, [allowFounderEdits, supabase]);
+
+  useEffect(() => {
+    const founderIds = Array.from(
+      new Set(logs.map((log) => log.last_edited_by_founder_id).filter((value): value is string => Boolean(value))),
+    );
+
+    if (!founderIds.length) {
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      const { data } = await supabase.from("profiles").select("id, name").in("id", founderIds);
+
+      if (!active) {
+        return;
+      }
+
+      setFounderNameById(Object.fromEntries((data ?? []).map((profile) => [profile.id, profile.name ?? profile.id])));
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [logs, supabase]);
 
   const totalBags = logs.reduce((sum, log) => sum + (log.expected_bags ?? 0), 0);
   const totalWeight = logs.reduce((sum, log) => sum + Number(log.w3 ?? 0), 0);
@@ -288,6 +317,7 @@ export function AnalyticsView({
       w2: parsedW2,
       w2_time: fromDateTimeLocalValue(editForm.w2_time),
       status: editForm.status,
+      last_edited_by_founder_id: currentUserId || null,
     };
 
     const { error } = await supabase.from("wheat_logs").update(updates).eq("id", editingLog.id);
@@ -323,6 +353,7 @@ export function AnalyticsView({
       W2: log.w2,
       "Weight 2 Time": log.w2_time ? formatDateTime(log.w2_time) : "",
       "Net Weight": log.w3,
+      "Last Edited By": log.last_edited_by_founder_id ? founderNameById[log.last_edited_by_founder_id] ?? log.last_edited_by_founder_id : "-",
       Status: log.status,
     }));
 
@@ -426,14 +457,15 @@ export function AnalyticsView({
                 "Vehicle Number",
                 "Car Image",
                 "Bags",
-                "Godown Number",
                 "W1",
                 "Weight 1 Time",
                 "W1 Image",
                 "W2",
                 "Weight 2 Time",
                 "W2 Image",
+                "Godown Number",
                 "Net Weight",
+                "Last Edited By",
                 "Print",
                 ...(allowFounderEdits ? ["Edit"] : []),
               ].map((head) => (
@@ -458,14 +490,15 @@ export function AnalyticsView({
                 <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.car_image_url ? <a href={log.car_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.expected_bags}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1 ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1_time ? formatDateTime(log.w1_time) : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1_image_url ? <a href={log.w1_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w2 ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w2_time ? formatDateTime(log.w2_time) : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w2_image_url ? <a href={log.w2_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.last_edited_by_founder_id ? founderNameById[log.last_edited_by_founder_id] ?? log.last_edited_by_founder_id : "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">
                   <Button type="button" variant="secondary" onClick={() => void handlePrint(log)}>
                     Print

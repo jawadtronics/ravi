@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     if (
       role !== "gate_person" &&
       role !== "weight_manager" &&
+      role !== "center_manager" &&
       role !== "super_manager" &&
       role !== "founder"
     ) {

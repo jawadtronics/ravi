@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { AnalyticsView } from "@/components/dashboard/analytics-view";
-import { Center, Profile } from "@/types/app";
+import { Center } from "@/types/app";
 
-export function FounderCenterAnalytics({ centers, founderProfile }: { centers: Center[]; founderProfile: Profile }) {
+export function SuperManagerCenterAnalytics({ centers }: { centers: Center[] }) {
   const [selectedCenter, setSelectedCenter] = useState<string>("all");
 
   const centerNameById = useMemo(() => {
@@ -28,12 +28,12 @@ export function FounderCenterAnalytics({ centers, founderProfile }: { centers: C
           ))}
         </select>
       </div>
+
       <AnalyticsView
         showCenterColumn
         centerFilter={selectedCenter === "all" ? null : selectedCenter}
         centerNameById={centerNameById}
-        allowFounderEdits
-        currentUserId={founderProfile.id}
+        allowFounderEdits={false}
       />
     </div>
   );

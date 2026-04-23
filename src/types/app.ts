@@ -1,6 +1,7 @@
 export type UserRole =
   | "gate_person"
   | "weight_manager"
+  | "center_manager"
   | "super_manager"
   | "founder";
 
@@ -54,6 +55,7 @@ export interface WheatLog {
   w2_time: string | null;
   w2_image_url: string | null;
   w3: number | null;
+  last_edited_by_founder_id: string | null;
   status: "pending" | "completed";
   created_at: string;
   updated_at: string;

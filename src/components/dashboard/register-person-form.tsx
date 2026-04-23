@@ -14,6 +14,7 @@ interface RegisterPersonFormProps {
 const roleOptions = [
   { label: "Gate Person", value: "gate_person" },
   { label: "Weight Manager", value: "weight_manager" },
+  { label: "Center Manager", value: "center_manager" },
   { label: "Super Manager", value: "super_manager" },
   { label: "Founder", value: "founder" },
 ];

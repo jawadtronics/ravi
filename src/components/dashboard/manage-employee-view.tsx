@@ -18,6 +18,7 @@ export function ManageEmployeeView({ centers }: ManageEmployeeViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [emailToBlock, setEmailToBlock] = useState("");
   const [blocking, setBlocking] = useState(false);
+  const [updatingEmployeeEmail, setUpdatingEmployeeEmail] = useState<string | null>(null);
 
   const centerNameById = useMemo(() => Object.fromEntries(centers.map((center) => [center.id, center.name])), [centers]);
 
@@ -69,6 +70,28 @@ export function ManageEmployeeView({ centers }: ManageEmployeeViewProps) {
     await fetchEmployees();
   }
 
+  async function handleUnblock(email: string) {
+    setUpdatingEmployeeEmail(email);
+    setError(null);
+
+    const response = await fetch("/api/block-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, action: "unblock" }),
+    });
+
+    const payload = (await response.json()) as { error?: string };
+
+    if (!response.ok) {
+      setError(payload.error ?? "Unable to unblock employee");
+      setUpdatingEmployeeEmail(null);
+      return;
+    }
+
+    setUpdatingEmployeeEmail(null);
+    await fetchEmployees();
+  }
+
   return (
     <div className="space-y-6">
       <RegisterPersonForm centers={centers} onSuccess={fetchEmployees} />
@@ -97,6 +120,7 @@ export function ManageEmployeeView({ centers }: ManageEmployeeViewProps) {
                   "Center",
                   "Joined At",
                   "Blocked",
+                  "Action",
                   "Last Sign In",
                   "Blocked At",
                 ].map((head) => (
@@ -109,7 +133,7 @@ export function ManageEmployeeView({ centers }: ManageEmployeeViewProps) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="border border-slate-200 px-2 py-4 text-slate-600" colSpan={10}>
+                  <td className="border border-slate-200 px-2 py-4 text-slate-600" colSpan={11}>
                     Loading employees...
                   </td>
                 </tr>
@@ -128,13 +152,28 @@ export function ManageEmployeeView({ centers }: ManageEmployeeViewProps) {
                         {employee.blocked ? "Blocked" : "Active"}
                       </span>
                     </td>
+                    <td className="border border-slate-200 px-2 py-2">
+                      {employee.blocked ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => void handleUnblock(employee.email)}
+                          loading={updatingEmployeeEmail === employee.email}
+                          disabled={Boolean(updatingEmployeeEmail) && updatingEmployeeEmail !== employee.email}
+                        >
+                          Unblock
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                     <td className="border border-slate-200 px-2 py-2">{employee.last_sign_in_at ? formatDateTime(employee.last_sign_in_at) : "-"}</td>
                     <td className="border border-slate-200 px-2 py-2">{employee.blocked_at ? formatDateTime(employee.blocked_at) : "-"}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="border border-slate-200 px-2 py-4 text-slate-600" colSpan={10}>
+                  <td className="border border-slate-200 px-2 py-4 text-slate-600" colSpan={11}>
                     No employees found.
                   </td>
                 </tr>

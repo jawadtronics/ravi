@@ -34,7 +34,7 @@ export function FounderWorkspaceView({ profile, centers }: FounderWorkspaceViewP
         </div>
       </Card>
 
-      {tab === "logs" ? <FounderCenterAnalytics centers={centers} /> : <ManageEmployeeView centers={centers} />}
+      {tab === "logs" ? <FounderCenterAnalytics centers={centers} founderProfile={profile} /> : <ManageEmployeeView centers={centers} />}
     </div>
   );
 }

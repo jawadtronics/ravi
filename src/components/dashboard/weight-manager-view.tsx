@@ -312,11 +312,11 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Gate Person",
                   "Car Image",
                   "Bags",
-                  "Godown Number",
                   "W1",
                   "W1 Image",
                   "W2",
                   "W2 Image",
+                  "Godown Number",
                   "Submit",
                 ].map((head) => (
                   <th key={head} className="border border-slate-200 px-2 py-2">{head}</th>
@@ -350,11 +350,6 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                       <button className="text-amber-700" onClick={() => openEdit(log, "bags")} disabled={log.status === "completed"}>
                         ✏️
                       </button>
-                    </div>
-                  </td>
-                  <td className="border border-slate-200 px-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <p>{log.second_godown ?? "-"}</p>
                     </div>
                   </td>
                   <td className="border border-slate-200 px-2 py-2">
@@ -398,6 +393,11 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                     )}
                   </td>
                   <td className="border border-slate-200 px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      <p>{log.second_godown ?? "-"}</p>
+                    </div>
+                  </td>
+                  <td className="border border-slate-200 px-2 py-2">
                     <Button
                       type="button"
                       variant={log.status === "completed" ? "secondary" : "primary"}
@@ -428,9 +428,9 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Gate Person",
                   "Vehicle Number",
                   "Bags",
-                  "Godown Number",
                   "W1",
                   "W2",
+                  "Godown Number",
                   "Net Weight",
                   "Print Receipt",
                 ].map((head) => (
@@ -450,9 +450,9 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.expected_bags}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w1 ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w2 ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">
                     <Button type="button" variant="secondary" onClick={() => void handlePrint(log)}>
@@ -497,22 +497,22 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                 <label className="mb-1 block text-sm font-medium text-slate-700">{editKind === "w1_bundle" ? "Weight 1" : "Weight 2"}</label>
                 <Input type="number" step="0.01" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} />
               </div>
-              {editKind === "w2_bundle" ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Godown Number</label>
-                  <Input type="number" step="0.01" value={godownInput} onChange={(e) => setGodownInput(e.target.value)} />
-                </div>
-              ) : null}
               <FileUpload
                 bucket="wheat-images"
                 folder={editKind === "w1_bundle" ? "w1" : "w2"}
-                label="Weight slip image"
+                label="Weight Indicator Image"
                 accept="image/*"
                 value={imageUrl}
                 allowReplace={false}
                 onUploaded={setImageUrl}
                 onRemoved={() => setImageUrl(null)}
               />
+              {editKind === "w2_bundle" ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Godown Number</label>
+                  <Input type="number" step="0.01" value={godownInput} onChange={(e) => setGodownInput(e.target.value)} />
+                </div>
+              ) : null}
             </>
           )}
           <div className="flex items-center justify-end gap-3">
