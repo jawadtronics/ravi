@@ -315,14 +315,14 @@ export function AnalyticsView({
       "Portal ID": log.portal_id ?? log.cnic ?? "",
       "Driver Name": log.driver_name,
       "Driver Phone": log.driver_phone ?? log.phone ?? "",
-      "Vehicle Phone": log.vehicle_phone ?? log.car_plate ?? "",
+      "Vehicle Number": log.vehicle_phone ?? log.car_plate ?? "",
       Bags: log.expected_bags,
-      "2nd Godown": log.second_godown,
+      "Godown Number": log.second_godown,
       W1: log.w1,
       "Weight 1 Time": log.w1_time ? formatDateTime(log.w1_time) : "",
       W2: log.w2,
       "Weight 2 Time": log.w2_time ? formatDateTime(log.w2_time) : "",
-      W3: log.w3,
+      "Net Weight": log.w3,
       Status: log.status,
     }));
 
@@ -356,6 +356,9 @@ export function AnalyticsView({
     return String(editingLog.w3);
   })();
 
+  const filteredTotalBags = visibleLogs.reduce((sum, log) => sum + Number(log.expected_bags ?? 0), 0);
+  const filteredTotalNetWeight = visibleLogs.reduce((sum, log) => sum + Number(log.w3 ?? 0), 0);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -363,7 +366,7 @@ export function AnalyticsView({
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by name, CNIC, phone, car plate, weight, or time"
+          placeholder="Search by farmer, portal id, driver, vehicle number, net weight, or time"
         />
       </Card>
 
@@ -373,7 +376,7 @@ export function AnalyticsView({
           <p className="text-3xl font-black text-slate-900">{totalBags}</p>
         </Card>
         <Card>
-          <p className="text-sm text-slate-600">Total Weight (Sum of W3)</p>
+          <p className="text-sm text-slate-600">Total Net Weight (Sum)</p>
           <p className="text-3xl font-black text-slate-900">{formatNumber(totalWeight, 2)}</p>
         </Card>
       </div>
@@ -391,6 +394,21 @@ export function AnalyticsView({
         <Button type="button" variant="secondary" onClick={() => exportData("csv")}>Export CSV</Button>
       </Card>
 
+      <Card className="flex flex-wrap items-center gap-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Filtered Summary</p>
+          <p className="text-sm text-slate-600">Totals from currently filtered rows</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Filtered Bags</p>
+          <p className="text-2xl font-black text-slate-900">{filteredTotalBags}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Filtered Net Weight</p>
+          <p className="text-2xl font-black text-slate-900">{formatNumber(filteredTotalNetWeight, 2)}</p>
+        </div>
+      </Card>
+
       <Card className="overflow-auto">
         <table className="w-full min-w-[1200px] border-collapse text-sm">
           <thead>
@@ -405,17 +423,17 @@ export function AnalyticsView({
                 "Portal ID",
                 "Driver Name",
                 "Driver Phone",
-                "Vehicle Phone",
+                "Vehicle Number",
                 "Car Image",
                 "Bags",
-                "2nd Godown",
+                "Godown Number",
                 "W1",
                 "Weight 1 Time",
                 "W1 Image",
                 "W2",
                 "Weight 2 Time",
                 "W2 Image",
-                "W3",
+                "Net Weight",
                 "Print",
                 ...(allowFounderEdits ? ["Edit"] : []),
               ].map((head) => (
@@ -505,7 +523,7 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Phone</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Number</label>
                 <Input
                   value={editForm.vehicle_phone}
                   onChange={(event) => setEditForm((prev) => (prev ? { ...prev, vehicle_phone: event.target.value } : prev))}
@@ -580,7 +598,7 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">2nd Godown</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Godown Number</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -623,7 +641,7 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">W3 (Auto = W1 - W2)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Net Weight (Auto = W1 - W2)</label>
                 <Input value={computedNetWeight} disabled />
               </div>
             </div>

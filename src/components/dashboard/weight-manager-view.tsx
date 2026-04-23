@@ -14,7 +14,7 @@ import { downloadWheatLogPdf } from "@/lib/log-pdf";
 
 type Tab = "realtime" | "history";
 
-type EditKind = "bags" | "second_godown" | "w1" | "w1_image" | "w2" | "w2_image";
+type EditKind = "bags" | "w1_bundle" | "w2_bundle";
 
 export function WeightManagerView({ managerId, centerId }: { managerId: string; centerId: string | null }) {
   const supabase = useMemo(() => createClient(), []);
@@ -28,6 +28,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
   const [selectedLog, setSelectedLog] = useState<WheatLog | null>(null);
   const [editKind, setEditKind] = useState<EditKind | null>(null);
   const [weightInput, setWeightInput] = useState("");
+  const [godownInput, setGodownInput] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
@@ -133,24 +134,16 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     setPageError(null);
     setSelectedLog(log);
     setEditKind(kind);
-    setWeightInput(
-      kind === "bags"
-        ? String(log.expected_bags ?? "")
-        : kind === "second_godown"
-          ? String(log.second_godown ?? "")
-        : kind === "w1"
-          ? String(log.w1 ?? "")
-          : kind === "w2"
-            ? String(log.w2 ?? "")
-            : "",
-    );
-    setImageUrl(kind === "w1_image" ? log.w1_image_url : kind === "w2_image" ? log.w2_image_url : null);
+    setWeightInput(kind === "bags" ? String(log.expected_bags ?? "") : kind === "w1_bundle" ? String(log.w1 ?? "") : String(log.w2 ?? ""));
+    setGodownInput(kind === "w2_bundle" ? String(log.second_godown ?? "") : "");
+    setImageUrl(kind === "w1_bundle" ? log.w1_image_url : kind === "w2_bundle" ? log.w2_image_url : null);
   }
 
   function closeEdit() {
     setSelectedLog(null);
     setEditKind(null);
     setWeightInput("");
+    setGodownInput("");
     setImageUrl(null);
   }
 
@@ -259,17 +252,17 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     const updates: Partial<WheatLog> = { weight_manager_id: managerId };
 
     if (editKind === "bags") updates.expected_bags = Number(weightInput);
-    if (editKind === "second_godown") updates.second_godown = Number(weightInput);
-    if (editKind === "w1") {
+    if (editKind === "w1_bundle") {
       updates.w1 = Number(weightInput);
       updates.w1_time = new Date().toISOString();
+      updates.w1_image_url = imageUrl;
     }
-    if (editKind === "w2") {
+    if (editKind === "w2_bundle") {
       updates.w2 = Number(weightInput);
       updates.w2_time = new Date().toISOString();
+      updates.w2_image_url = imageUrl;
+      updates.second_godown = Number(godownInput);
     }
-    if (editKind === "w1_image") updates.w1_image_url = imageUrl;
-    if (editKind === "w2_image") updates.w2_image_url = imageUrl;
 
     const { error } = await supabase.from("wheat_logs").update(updates).eq("id", selectedLog.id);
 
@@ -290,7 +283,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by name, CNIC, phone, car plate, weight, or time"
+          placeholder="Search by farmer, portal id, driver, vehicle number, weight, or time"
         />
       </Card>
 
@@ -315,11 +308,11 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Portal ID",
                   "Driver Name",
                   "Driver Phone",
-                  "Vehicle Phone",
+                  "Vehicle Number",
                   "Gate Person",
                   "Car Image",
                   "Bags",
-                  "2nd Godown",
+                  "Godown Number",
                   "W1",
                   "W1 Image",
                   "W2",
@@ -362,15 +355,12 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   <td className="border border-slate-200 px-2 py-2">
                     <div className="flex items-center gap-2">
                       <p>{log.second_godown ?? "-"}</p>
-                      <button className="text-amber-700" onClick={() => openEdit(log, "second_godown")} disabled={log.status === "completed"}>
-                        ✏️
-                      </button>
                     </div>
                   </td>
                   <td className="border border-slate-200 px-2 py-2">
                     <div className="flex items-center gap-2">
                       <p>{log.w1 ?? "-"}</p>
-                      <button className="text-amber-700" onClick={() => openEdit(log, "w1")} disabled={log.status === "completed"}>
+                      <button className="text-amber-700" onClick={() => openEdit(log, "w1_bundle")} disabled={log.status === "completed"}>
                         ✏️
                       </button>
                     </div>
@@ -384,15 +374,13 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                         </a>
                       </div>
                     ) : (
-                      <button className="text-amber-700" onClick={() => openEdit(log, "w1_image")}>
-                        ✏️
-                      </button>
+                      "-"
                     )}
                   </td>
                   <td className="border border-slate-200 px-2 py-2">
                     <div className="flex items-center gap-2">
                       <p>{log.w2 ?? "-"}</p>
-                      <button className="text-amber-700" onClick={() => openEdit(log, "w2")} disabled={log.status === "completed"}>
+                      <button className="text-amber-700" onClick={() => openEdit(log, "w2_bundle")} disabled={log.status === "completed"}>
                         ✏️
                       </button>
                     </div>
@@ -406,9 +394,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                         </a>
                       </div>
                     ) : (
-                      <button className="text-amber-700" onClick={() => openEdit(log, "w2_image")}>
-                        ✏️
-                      </button>
+                      "-"
                     )}
                   </td>
                   <td className="border border-slate-200 px-2 py-2">
@@ -440,12 +426,12 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Portal ID",
                   "Driver Name",
                   "Gate Person",
-                  "Vehicle Phone",
+                  "Vehicle Number",
                   "Bags",
-                  "2nd Godown",
+                  "Godown Number",
                   "W1",
                   "W2",
-                  "W3",
+                  "Net Weight",
                   "Print Receipt",
                 ].map((head) => (
                   <th key={head} className="border border-slate-200 px-2 py-2">{head}</th>
@@ -485,50 +471,62 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
         title={
           editKind === "bags"
             ? "Update expected bags"
-            : editKind === "second_godown"
-              ? "Update 2nd godown"
-            : editKind === "w1"
-            ? "Enter W1 weight"
-            : editKind === "w2"
-              ? "Enter W2 weight"
-              : editKind === "w1_image"
-                ? "Take/Upload Picture of W1"
-                : "Take/Upload Picture of W2"
+            : editKind === "w1_bundle"
+              ? "Add Weight 1"
+              : "Add Weight 2"
         }
         onClose={closeEdit}
         showCloseButton={false}
       >
         <div className="space-y-4">
-          {editKind === "bags" || editKind === "second_godown" || editKind === "w1" || editKind === "w2" ? (
+          {editKind === "bags" ? (
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                {editKind === "bags" ? "Bag count" : editKind === "second_godown" ? "2nd godown value" : "Weight value"}
+                Bag count
               </label>
               <Input
                 type="number"
-                step={editKind === "bags" ? "1" : "0.01"}
+                step="1"
                 value={weightInput}
                 onChange={(e) => setWeightInput(e.target.value)}
               />
             </div>
           ) : (
-            <FileUpload
-              bucket="wheat-images"
-              folder={editKind === "w1_image" ? "w1" : "w2"}
-              label="Weight slip image"
-              accept="image/*"
-              value={imageUrl}
-              allowReplace={false}
-              onUploaded={setImageUrl}
-              onRemoved={() => setImageUrl(null)}
-            />
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{editKind === "w1_bundle" ? "Weight 1" : "Weight 2"}</label>
+                <Input type="number" step="0.01" value={weightInput} onChange={(e) => setWeightInput(e.target.value)} />
+              </div>
+              {editKind === "w2_bundle" ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Godown Number</label>
+                  <Input type="number" step="0.01" value={godownInput} onChange={(e) => setGodownInput(e.target.value)} />
+                </div>
+              ) : null}
+              <FileUpload
+                bucket="wheat-images"
+                folder={editKind === "w1_bundle" ? "w1" : "w2"}
+                label="Weight slip image"
+                accept="image/*"
+                value={imageUrl}
+                allowReplace={false}
+                onUploaded={setImageUrl}
+                onRemoved={() => setImageUrl(null)}
+              />
+            </>
           )}
           <div className="flex items-center justify-end gap-3">
             <Button variant="secondary" onClick={closeEdit}>Cancel</Button>
             <Button
               onClick={submitEdit}
               loading={saving}
-              disabled={editKind === "bags" || editKind === "second_godown" || editKind === "w1" || editKind === "w2" ? !weightInput : !imageUrl}
+              disabled={
+                editKind === "bags"
+                  ? !weightInput
+                  : editKind === "w1_bundle"
+                    ? !weightInput || !imageUrl
+                    : !weightInput || !imageUrl || !godownInput
+              }
             >
               Submit
             </Button>

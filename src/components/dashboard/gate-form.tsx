@@ -92,7 +92,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
           <Input required value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Phone</label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Vehicle Number</label>
           <Input required value={vehiclePhone} onChange={(e) => setVehiclePhone(e.target.value)} />
         </div>
         <div>
