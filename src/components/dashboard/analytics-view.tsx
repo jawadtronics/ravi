@@ -93,6 +93,7 @@ export function AnalyticsView({
   const [logs, setLogs] = useState<WheatLog[]>([]);
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
   const [founderNameById, setFounderNameById] = useState<Record<string, string>>({});
+  const [millNameByCenterId, setMillNameByCenterId] = useState<Record<string, string>>({});
   const [editingLog, setEditingLog] = useState<WheatLog | null>(null);
   const [editForm, setEditForm] = useState<FounderEditForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -153,6 +154,51 @@ export function AnalyticsView({
       }
 
       setEmployeeNameById(Object.fromEntries((data ?? []).map((profile) => [profile.id, profile.name ?? profile.id])));
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [logs, supabase]);
+
+  useEffect(() => {
+    const centerIds = Array.from(new Set(logs.map((log) => log.center_id).filter((value): value is string => Boolean(value))));
+
+    if (!centerIds.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMillNameByCenterId({});
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      const { data: centersDataRaw } = await supabase.from("centers").select("id, mill_id").in("id", centerIds);
+
+      if (!active) {
+        return;
+      }
+
+      const centersData = (centersDataRaw ?? []) as Array<{ id: string; mill_id: string | null }>;
+      const millIds = Array.from(new Set(centersData.map((center) => center.mill_id).filter((value): value is string => Boolean(value))));
+
+      if (!millIds.length) {
+        setMillNameByCenterId({});
+        return;
+      }
+
+      const { data: millsDataRaw } = await supabase.from("mills").select("id, name").in("id", millIds);
+
+      if (!active) {
+        return;
+      }
+
+      const millNameById = Object.fromEntries(((millsDataRaw ?? []) as Array<{ id: string; name: string | null }>).map((mill) => [mill.id, mill.name ?? mill.id]));
+      setMillNameByCenterId(
+        Object.fromEntries(
+          centersData.map((center) => [center.id, center.mill_id ? (millNameById[center.mill_id] ?? "-") : "-"]),
+        ),
+      );
     })();
 
     return () => {
@@ -260,6 +306,7 @@ export function AnalyticsView({
   async function handlePrint(log: WheatLog) {
     await downloadWheatLogPdf({
       log,
+      millName: millNameByCenterId[log.center_id ?? ""] ?? null,
       centerName: centerNameById?.[log.center_id ?? ""],
       gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
       weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,

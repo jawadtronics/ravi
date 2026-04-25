@@ -33,6 +33,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
   const [saving, setSaving] = useState(false);
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
   const [centerNameById, setCenterNameById] = useState<Record<string, string>>({});
+  const [millNameByCenterId, setMillNameByCenterId] = useState<Record<string, string>>({});
   const [pageError, setPageError] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async () => {
@@ -116,13 +117,33 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     let active = true;
 
     void (async () => {
-      const { data } = await supabase.from("centers").select("id, name").in("id", centerIds);
+      const { data } = await supabase.from("centers").select("id, name, mill_id").in("id", centerIds);
 
       if (!active) {
         return;
       }
 
-      setCenterNameById(Object.fromEntries((data ?? []).map((center) => [center.id, center.name ?? center.id])));
+      const centersData = (data ?? []) as Array<{ id: string; name: string | null; mill_id: string | null }>;
+      setCenterNameById(Object.fromEntries(centersData.map((center) => [center.id, center.name ?? center.id])));
+
+      const millIds = Array.from(new Set(centersData.map((center) => center.mill_id).filter((value): value is string => Boolean(value))));
+      if (!millIds.length) {
+        setMillNameByCenterId({});
+        return;
+      }
+
+      const { data: millsData } = await supabase.from("mills").select("id, name").in("id", millIds);
+
+      if (!active) {
+        return;
+      }
+
+      const millNameById = Object.fromEntries(((millsData ?? []) as Array<{ id: string; name: string | null }>).map((mill) => [mill.id, mill.name ?? mill.id]));
+      setMillNameByCenterId(
+        Object.fromEntries(
+          centersData.map((center) => [center.id, center.mill_id ? (millNameById[center.mill_id] ?? "-") : "-"]),
+        ),
+      );
     })();
 
     return () => {
@@ -212,6 +233,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
   async function handlePrint(log: WheatLog) {
     await downloadWheatLogPdf({
       log,
+      millName: millNameByCenterId[log.center_id ?? ""] ?? null,
       centerName: centerNameById[log.center_id ?? ""] ?? log.center_id ?? null,
       gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
       weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
