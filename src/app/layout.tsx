@@ -15,7 +15,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ravi Food | Wheat Management",
+  title: "Wheat Management System",
   description: "Role-based wheat weighing and management system",
 };
 

@@ -119,7 +119,7 @@ export async function downloadWheatLogPdf({ log, millName, centerName, gatePerso
     <div style="position:relative;width:210mm;height:297mm;padding:12mm 14mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-start;gap:4mm;background:#ffffff;color:#000000;">
       <div style="text-align:center;">
         <div style="font-size:24px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">Center Weightment Slip</div>
-        <div style="font-size:16px;font-weight:700;color:#111827;margin-top:1.5mm;">Mill: ${escapeHtml(displayValue(millName))}</div>
+        <div style="font-size:16px;font-weight:700;color:#111827;margin-top:1.5mm;">${escapeHtml(displayValue(millName))}</div>
         <div style="font-size:17px;font-weight:600;color:#111827;margin-top:2mm;">${escapeHtml(displayValue(centerName))}</div>
         <div style="font-size:13px;font-weight:700;color:#1f2937;margin-top:1.5mm;">Entry ID: ${escapeHtml(displayValue(log.entry_id))}</div>
       </div>
