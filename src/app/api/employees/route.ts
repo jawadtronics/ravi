@@ -14,7 +14,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single<{ role: string }>();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, mill_id")
+      .eq("id", user.id)
+      .single<{ role: string; mill_id: string | null }>();
 
     if (!profile || profile.role !== "founder") {
       return NextResponse.json({ error: "Only founder can view employees" }, { status: 403 });
@@ -23,7 +27,7 @@ export async function GET() {
     const admin = createAdminClient();
     const [{ data: usersData, error: usersError }, { data: profilesData, error: profilesError }] = await Promise.all([
       admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-      admin.from("profiles").select("id, name, cnic, phone, address, role, center_id, created_at"),
+      admin.from("profiles").select("id, name, cnic, phone, address, role, mill_id, center_id, created_at"),
     ]);
 
     if (usersError) {
@@ -34,7 +38,8 @@ export async function GET() {
       return NextResponse.json({ error: profilesError.message }, { status: 400 });
     }
 
-    const profileById = new Map((profilesData ?? []).map((entry) => [entry.id, entry]));
+    const scopedProfiles = (profilesData ?? []).filter((entry) => entry.mill_id === profile.mill_id);
+    const profileById = new Map(scopedProfiles.map((entry) => [entry.id, entry]));
     const employees = usersData.users
       .map((userRecord) => {
         const profileRecord = profileById.get(userRecord.id);

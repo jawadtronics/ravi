@@ -9,7 +9,12 @@ export default async function SuperManagerDashboardPage() {
   const { profile } = await requireRole("super_manager");
   const supabase = await createClient();
 
-  const { data: centersData } = await supabase.from("centers").select("id, name, location").order("name");
+  let centersQuery = supabase.from("centers").select("id, mill_id, name, location").order("name");
+  if (profile.mill_id) {
+    centersQuery = centersQuery.eq("mill_id", profile.mill_id);
+  }
+
+  const { data: centersData } = await centersQuery;
   const centers = (centersData ?? []) as Center[];
 
   return (

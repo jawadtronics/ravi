@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single<{ role: string }>();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, mill_id")
+      .eq("id", user.id)
+      .single<{ role: string; mill_id: string | null }>();
 
     if (!profile || profile.role !== "founder") {
       return NextResponse.json({ error: "Only founder can manage user block status" }, { status: 403 });
@@ -38,6 +42,16 @@ export async function POST(request: NextRequest) {
 
     if (!targetUser) {
       return NextResponse.json({ error: "No user found for that email" }, { status: 404 });
+    }
+
+    const { data: targetProfile } = await admin
+      .from("profiles")
+      .select("mill_id")
+      .eq("id", targetUser.id)
+      .single<{ mill_id: string | null }>();
+
+    if (!targetProfile || targetProfile.mill_id !== profile.mill_id) {
+      return NextResponse.json({ error: "You can only manage users in your own mill" }, { status: 403 });
     }
 
     const metadata = {

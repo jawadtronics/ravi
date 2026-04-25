@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (
+      role !== "owner" &&
       role !== "gate_person" &&
       role !== "weight_manager" &&
       role !== "center_manager" &&
@@ -41,10 +42,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single<{ role: string }>();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, mill_id")
+      .eq("id", user.id)
+      .single<{ role: string; mill_id: string | null }>();
 
     if (!profile || profile.role !== "founder") {
       return NextResponse.json({ error: "Only founder can register users" }, { status: 403 });
+    }
+
+    if (role === "owner") {
+      return NextResponse.json({ error: "Founder cannot create owner role users" }, { status: 403 });
+    }
+
+    const { data: center } = await supabase
+      .from("centers")
+      .select("id, mill_id")
+      .eq("id", centerId)
+      .single<{ id: string; mill_id: string | null }>();
+
+    if (!center || center.mill_id !== profile.mill_id) {
+      return NextResponse.json({ error: "Selected center is outside your mill" }, { status: 403 });
     }
 
     const admin = createAdminClient();
@@ -59,6 +78,7 @@ export async function POST(request: NextRequest) {
         phone,
         address,
         role,
+        mill_id: profile.mill_id,
         center_id: centerId,
         blocked: false,
       },

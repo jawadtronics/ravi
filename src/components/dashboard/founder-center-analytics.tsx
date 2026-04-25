@@ -31,6 +31,7 @@ export function FounderCenterAnalytics({ centers, founderProfile }: { centers: C
       <AnalyticsView
         showCenterColumn
         centerFilter={selectedCenter === "all" ? null : selectedCenter}
+        allowedCenterIds={centers.map((center) => center.id)}
         centerNameById={centerNameById}
         allowFounderEdits
         currentUserId={founderProfile.id}

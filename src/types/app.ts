@@ -1,4 +1,5 @@
 export type UserRole =
+  | "owner"
   | "gate_person"
   | "weight_manager"
   | "center_manager"
@@ -12,6 +13,7 @@ export interface Profile {
   phone: string | null;
   address: string | null;
   role: UserRole;
+  mill_id?: string | null;
   center_id: string | null;
   blocked?: boolean;
   created_at?: string;
@@ -26,6 +28,7 @@ export interface EmployeeRecord extends Profile {
 
 export interface Center {
   id: string;
+  mill_id?: string | null;
   name: string;
   location: string | null;
 }

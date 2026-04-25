@@ -15,6 +15,7 @@ interface AnalyticsViewProps {
   centerId?: string | null;
   showCenterColumn?: boolean;
   centerFilter?: string | null;
+  allowedCenterIds?: string[];
   centerNameById?: Record<string, string>;
   allowFounderEdits?: boolean;
   currentUserId?: string | null;
@@ -80,6 +81,7 @@ export function AnalyticsView({
   centerId,
   showCenterColumn,
   centerFilter,
+  allowedCenterIds,
   centerNameById,
   allowFounderEdits = false,
   currentUserId,
@@ -107,6 +109,11 @@ export function AnalyticsView({
   );
 
   const fetchLogs = useCallback(async () => {
+    if (allowedCenterIds && allowedCenterIds.length === 0) {
+      setLogs([]);
+      return;
+    }
+
     let query = supabase
       .from("wheat_logs")
       .select("*")
@@ -114,12 +121,13 @@ export function AnalyticsView({
 
     if (centerId) query = query.eq("center_id", centerId);
     if (centerFilter) query = query.eq("center_id", centerFilter);
+    if (allowedCenterIds?.length) query = query.in("center_id", allowedCenterIds);
     if (startDate) query = query.gte("created_at", `${startDate}T00:00:00`);
     if (endDate) query = query.lte("created_at", `${endDate}T23:59:59`);
 
     const { data } = await query;
     setLogs((data ?? []) as WheatLog[]);
-  }, [centerFilter, centerId, endDate, startDate, supabase]);
+  }, [allowedCenterIds, centerFilter, centerId, endDate, startDate, supabase]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

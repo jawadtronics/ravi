@@ -32,6 +32,7 @@ export function SuperManagerCenterAnalytics({ centers }: { centers: Center[] }) 
       <AnalyticsView
         showCenterColumn
         centerFilter={selectedCenter === "all" ? null : selectedCenter}
+        allowedCenterIds={centers.map((center) => center.id)}
         centerNameById={centerNameById}
         allowFounderEdits={false}
       />
