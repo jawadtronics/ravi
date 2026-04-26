@@ -40,7 +40,7 @@ export interface WheatLog {
   gate_person_id: string | null;
   weight_manager_id: string | null;
   farmer_name: string | null;
-  portal_id: string | null;
+  farmer_cnic: string | null;
   driver_name: string;
   driver_phone: string | null;
   vehicle_phone: string | null;

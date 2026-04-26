@@ -16,7 +16,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
   const supabase = createClient();
 
   const [farmerName, setFarmerName] = useState("");
-  const [portalId, setPortalId] = useState("");
+  const [farmerCnic, setFarmerCnic] = useState("");
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [vehiclePhone, setVehiclePhone] = useState("");
@@ -42,11 +42,11 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
       center_id: centerId,
       gate_person_id: gatePersonId,
       farmer_name: farmerName,
-      portal_id: portalId,
+      farmer_cnic: farmerCnic,
       driver_name: driverName,
       driver_phone: driverPhone,
       vehicle_phone: vehiclePhone,
-      cnic: portalId,
+      cnic: farmerCnic,
       phone: driverPhone,
       car_plate: vehiclePhone,
       car_image_url: carImageUrl,
@@ -61,7 +61,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
     }
 
     setFarmerName("");
-    setPortalId("");
+    setFarmerCnic("");
     setDriverName("");
     setDriverPhone("");
     setVehiclePhone("");
@@ -80,8 +80,8 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
           <Input required value={farmerName} onChange={(e) => setFarmerName(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">Portal ID</label>
-          <Input required value={portalId} onChange={(e) => setPortalId(e.target.value)} />
+          <label className="mb-1 block text-sm font-medium text-slate-700">Farmer CNIC</label>
+          <Input required value={farmerCnic} onChange={(e) => setFarmerCnic(e.target.value)} />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Driver Name</label>

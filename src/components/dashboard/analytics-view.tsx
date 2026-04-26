@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { downloadWheatLogPdf } from "@/lib/log-pdf";
+import { downloadWheatLogPdf, downloadWheatLogsPdf } from "@/lib/log-pdf";
 
 interface AnalyticsViewProps {
   centerId?: string | null;
@@ -26,7 +26,7 @@ type FounderEditForm = {
   gate_person_id: string;
   weight_manager_id: string;
   farmer_name: string;
-  portal_id: string;
+  farmer_cnic: string;
   driver_name: string;
   driver_phone: string;
   vehicle_phone: string;
@@ -94,6 +94,7 @@ export function AnalyticsView({
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
   const [founderNameById, setFounderNameById] = useState<Record<string, string>>({});
   const [millNameByCenterId, setMillNameByCenterId] = useState<Record<string, string>>({});
+  const [selectedReceiptIds, setSelectedReceiptIds] = useState<string[]>([]);
   const [editingLog, setEditingLog] = useState<WheatLog | null>(null);
   const [editForm, setEditForm] = useState<FounderEditForm | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -214,11 +215,7 @@ export function AnalyticsView({
     let active = true;
 
     void (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, name, role")
-        .in("role", ["gate_person", "weight_manager"])
-        .order("name", { ascending: true });
+      const { data } = await supabase.from("profiles").select("id, name, role").in("role", ["gate_person", "weight_manager"]).order("name", { ascending: true });
 
       if (!active) {
         return;
@@ -227,7 +224,6 @@ export function AnalyticsView({
       const options = (data ?? []) as Array<{ id: string; name: string | null; role: string }>;
       setGatePersonOptions(
         options
-          .filter((entry) => entry.role === "gate_person")
           .map((entry) => ({ id: entry.id, name: entry.name ?? entry.id })),
       );
       setWeightManagerOptions(
@@ -275,7 +271,7 @@ export function AnalyticsView({
     const searchText = [
       log.entry_id,
       log.farmer_name,
-      log.portal_id,
+      log.farmer_cnic,
       log.driver_name,
       log.driver_phone,
       log.vehicle_phone,
@@ -303,6 +299,47 @@ export function AnalyticsView({
     return searchText.includes(searchQuery.toLowerCase().trim());
   });
 
+  const allVisibleReceiptsSelected = visibleLogs.length > 0 && visibleLogs.every((log) => selectedReceiptIds.includes(log.id));
+
+  const selectedVisibleLogs = visibleLogs.filter((log) => selectedReceiptIds.includes(log.id));
+
+  function toggleReceiptSelection(logId: string) {
+    setSelectedReceiptIds((current) =>
+      current.includes(logId) ? current.filter((entryId) => entryId !== logId) : [...current, logId],
+    );
+  }
+
+  function toggleSelectAllReceipts() {
+    const visibleIds = visibleLogs.map((log) => log.id);
+    setSelectedReceiptIds(
+      allVisibleReceiptsSelected
+        ? selectedReceiptIds.filter((logId) => !visibleIds.includes(logId))
+        : Array.from(new Set([...selectedReceiptIds, ...visibleIds])),
+    );
+  }
+
+  async function handlePrintSelectedReceipts() {
+    if (!selectedVisibleLogs.length) {
+      return;
+    }
+
+    if (selectedVisibleLogs.length === 1) {
+      await handlePrint(selectedVisibleLogs[0]);
+      return;
+    }
+
+    await downloadWheatLogsPdf({
+      items: selectedVisibleLogs.map((log) => ({
+        log,
+        millName: millNameByCenterId[log.center_id ?? ""] ?? null,
+        centerName: centerNameById?.[log.center_id ?? ""],
+        gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
+        weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
+      })),
+      fileName: "wheat-receipts.pdf",
+    });
+  }
+
   async function handlePrint(log: WheatLog) {
     await downloadWheatLogPdf({
       log,
@@ -322,7 +359,7 @@ export function AnalyticsView({
       gate_person_id: log.gate_person_id ?? "",
       weight_manager_id: log.weight_manager_id ?? "",
       farmer_name: log.farmer_name ?? "",
-      portal_id: log.portal_id ?? log.cnic ?? "",
+      farmer_cnic: log.farmer_cnic ?? log.cnic ?? "",
       driver_name: log.driver_name,
       driver_phone: log.driver_phone ?? log.phone ?? "",
       vehicle_phone: log.vehicle_phone ?? log.car_plate ?? "",
@@ -358,11 +395,11 @@ export function AnalyticsView({
       gate_person_id: editForm.gate_person_id.trim() || null,
       weight_manager_id: editForm.weight_manager_id.trim() || null,
       farmer_name: editForm.farmer_name.trim() || null,
-      portal_id: editForm.portal_id.trim() || null,
+      farmer_cnic: editForm.farmer_cnic.trim() || null,
       driver_name: editForm.driver_name.trim() || editingLog.driver_name,
       driver_phone: editForm.driver_phone.trim() || null,
       vehicle_phone: editForm.vehicle_phone.trim() || null,
-      cnic: editForm.portal_id.trim() || editingLog.cnic,
+      cnic: editForm.farmer_cnic.trim() || editingLog.cnic,
       phone: editForm.driver_phone.trim() || null,
       car_plate: editForm.vehicle_phone.trim() || editingLog.car_plate,
       expected_bags: toNumberOrFallback(editForm.expected_bags, editingLog.expected_bags),
@@ -397,7 +434,7 @@ export function AnalyticsView({
       "Gate Person": employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-",
       "Weight Manager": employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? "-",
       "Farmer Name": log.farmer_name ?? "",
-      "Portal ID": log.portal_id ?? log.cnic ?? "",
+      "Farmer CNIC": log.farmer_cnic ?? log.cnic ?? "",
       "Driver Name": log.driver_name,
       "Driver Phone": log.driver_phone ?? log.phone ?? "",
       "Vehicle Number": log.vehicle_phone ?? log.car_plate ?? "",
@@ -452,7 +489,7 @@ export function AnalyticsView({
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by farmer, portal id, driver, vehicle number, net weight, or time"
+          placeholder="Search by farmer, farmer cnic, driver, vehicle number, net weight, or time"
         />
       </Card>
 
@@ -478,6 +515,13 @@ export function AnalyticsView({
         </div>
         <Button type="button" variant="secondary" onClick={() => exportData("xlsx")}>Export XLSX</Button>
         <Button type="button" variant="secondary" onClick={() => exportData("csv")}>Export CSV</Button>
+        <Button type="button" variant="primary" onClick={() => void handlePrintSelectedReceipts()} disabled={!selectedVisibleLogs.length}>
+          Print Receipts{selectedVisibleLogs.length ? ` (${selectedVisibleLogs.length})` : ""}
+        </Button>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input type="checkbox" checked={allVisibleReceiptsSelected} onChange={toggleSelectAllReceipts} />
+          Select all visible
+        </label>
       </Card>
 
       <Card className="flex flex-wrap items-center gap-6">
@@ -506,7 +550,7 @@ export function AnalyticsView({
                 ...(showCenterColumn ? ["Center"] : []),
                 "Gate Person",
                 "Farmer Name",
-                "Portal ID",
+                "Farmer CNIC",
                 "Driver Name",
                 "Driver Phone",
                 "Vehicle Number",
@@ -521,8 +565,8 @@ export function AnalyticsView({
                 "Godown Number",
                 "Net Weight",
                 "Last Edited By",
-                "Print",
                 ...(allowFounderEdits ? ["Edit"] : []),
+                "Select",
               ].map((head) => (
                 <th key={head} className="border border-slate-200 px-2 py-2">{head}</th>
               ))}
@@ -539,7 +583,7 @@ export function AnalyticsView({
                 ) : null}
                 <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.farmer_cnic ?? log.cnic ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
@@ -554,11 +598,6 @@ export function AnalyticsView({
                 <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.last_edited_by_founder_id ? founderNameById[log.last_edited_by_founder_id] ?? log.last_edited_by_founder_id : "-"}</td>
-                <td className="border border-slate-200 px-2 py-2">
-                  <Button type="button" variant="secondary" onClick={() => void handlePrint(log)}>
-                    Print
-                  </Button>
-                </td>
                 {allowFounderEdits ? (
                   <td className="border border-slate-200 px-2 py-2">
                     <Button type="button" variant="secondary" onClick={() => openFounderEdit(log)}>
@@ -566,6 +605,14 @@ export function AnalyticsView({
                     </Button>
                   </td>
                 ) : null}
+                <td className="border border-slate-200 px-2 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedReceiptIds.includes(log.id)}
+                    onChange={() => toggleReceiptSelection(log.id)}
+                    aria-label={`Select receipt for ${log.driver_name}`}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -590,10 +637,10 @@ export function AnalyticsView({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Portal ID</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Farmer CNIC</label>
                 <Input
-                  value={editForm.portal_id}
-                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, portal_id: event.target.value } : prev))}
+                  value={editForm.farmer_cnic}
+                  onChange={(event) => setEditForm((prev) => (prev ? { ...prev, farmer_cnic: event.target.value } : prev))}
                 />
               </div>
               <div>

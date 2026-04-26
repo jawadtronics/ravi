@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { FileUpload } from "@/components/dashboard/file-upload";
-import { downloadWheatLogPdf } from "@/lib/log-pdf";
+import { downloadWheatLogPdf, downloadWheatLogsPdf } from "@/lib/log-pdf";
 
 type Tab = "realtime" | "history";
 
@@ -34,6 +34,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
   const [employeeNameById, setEmployeeNameById] = useState<Record<string, string>>({});
   const [centerNameById, setCenterNameById] = useState<Record<string, string>>({});
   const [millNameByCenterId, setMillNameByCenterId] = useState<Record<string, string>>({});
+  const [selectedHistoryReceiptIds, setSelectedHistoryReceiptIds] = useState<string[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async () => {
@@ -172,7 +173,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     const searchText = [
       log.entry_id,
       log.farmer_name,
-      log.portal_id,
+      log.farmer_cnic,
       log.driver_name,
       log.driver_phone,
       log.vehicle_phone,
@@ -203,7 +204,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     const searchText = [
       log.entry_id,
       log.farmer_name,
-      log.portal_id,
+      log.farmer_cnic,
       log.driver_name,
       log.driver_phone,
       log.vehicle_phone,
@@ -230,14 +231,52 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
     return searchText.includes(searchQuery.toLowerCase().trim());
   });
 
-  async function handlePrint(log: WheatLog) {
-    await downloadWheatLogPdf({
-      log,
-      millName: millNameByCenterId[log.center_id ?? ""] ?? null,
-      centerName: centerNameById[log.center_id ?? ""] ?? log.center_id ?? null,
-      gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
-      weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
-      fileName: `weight-log-${log.driver_name.replaceAll(" ", "-").toLowerCase()}.pdf`,
+  const selectedHistoryLogs = visibleHistoryLogs.filter((log) => selectedHistoryReceiptIds.includes(log.id));
+
+  function toggleHistoryReceiptSelection(logId: string) {
+    setSelectedHistoryReceiptIds((current) =>
+      current.includes(logId) ? current.filter((entryId) => entryId !== logId) : [...current, logId],
+    );
+  }
+
+  function toggleSelectAllHistoryReceipts() {
+    const visibleIds = visibleHistoryLogs.map((log) => log.id);
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((logId) => selectedHistoryReceiptIds.includes(logId));
+
+    setSelectedHistoryReceiptIds(
+      allVisibleSelected
+        ? selectedHistoryReceiptIds.filter((logId) => !visibleIds.includes(logId))
+        : Array.from(new Set([...selectedHistoryReceiptIds, ...visibleIds])),
+    );
+  }
+
+  async function handlePrintSelectedHistoryReceipts() {
+    if (!selectedHistoryLogs.length) {
+      return;
+    }
+
+    if (selectedHistoryLogs.length === 1) {
+      const log = selectedHistoryLogs[0];
+      await downloadWheatLogPdf({
+        log,
+        millName: millNameByCenterId[log.center_id ?? ""] ?? null,
+        centerName: centerNameById[log.center_id ?? ""],
+        gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
+        weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
+        fileName: `weight-log-${log.driver_name.replaceAll(" ", "-").toLowerCase()}.pdf`,
+      });
+      return;
+    }
+
+    await downloadWheatLogsPdf({
+      items: selectedHistoryLogs.map((log) => ({
+        log,
+        millName: millNameByCenterId[log.center_id ?? ""] ?? null,
+        centerName: centerNameById[log.center_id ?? ""],
+        gatePersonName: employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? null,
+        weightManagerName: employeeNameById[log.weight_manager_id ?? ""] ?? log.weight_manager_id ?? null,
+      })),
+      fileName: `wheat-receipts-${Date.now()}.pdf`,
     });
   }
 
@@ -305,7 +344,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search by farmer, portal id, driver, vehicle number, weight, or time"
+          placeholder="Search by farmer, farmer cnic, driver, vehicle number, weight, or time"
         />
       </Card>
 
@@ -313,6 +352,18 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
         <Button variant={tab === "realtime" ? "primary" : "secondary"} onClick={() => setTab("realtime")}>Realtime Logs</Button>
         <Button variant={tab === "history" ? "primary" : "secondary"} onClick={() => setTab("history")}>History</Button>
       </Card>
+
+      {tab === "history" ? (
+        <Card className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="primary" onClick={() => void handlePrintSelectedHistoryReceipts()} disabled={!selectedHistoryLogs.length}>
+            Print Receipts{selectedHistoryLogs.length ? ` (${selectedHistoryLogs.length})` : ""}
+          </Button>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" checked={selectedHistoryLogs.length > 0 && selectedHistoryLogs.length === visibleHistoryLogs.length} onChange={toggleSelectAllHistoryReceipts} />
+            Select all visible
+          </label>
+        </Card>
+      ) : null}
 
       {pageError ? <Card className="border-red-200 bg-red-50 text-sm text-red-700">{pageError}</Card> : null}
 
@@ -323,11 +374,8 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <thead>
               <tr className="bg-slate-100 text-left">
                 {[
-                  "Entry ID",
-                  "Gate Entry Time",
-                  "Completion Time",
                   "Farmer Name",
-                  "Portal ID",
+                  "Farmer CNIC",
                   "Driver Name",
                   "Driver Phone",
                   "Vehicle Number",
@@ -348,11 +396,8 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
             <tbody>
               {visiblePendingLogs.map((log) => (
                 <tr key={log.id} className="align-top">
-                  <td className="border border-slate-200 px-2 py-2">{log.entry_id ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.created_at)}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.status === "completed" ? formatDateTime(log.updated_at) : "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.farmer_cnic ?? log.cnic ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
@@ -445,7 +490,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Gate Entry Time",
                   "Completion Time",
                   "Farmer Name",
-                  "Portal ID",
+                  "Farmer CNIC",
                   "Driver Name",
                   "Gate Person",
                   "Vehicle Number",
@@ -454,7 +499,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "W2",
                   "Godown Number",
                   "Net Weight",
-                  "Print Receipt",
+                  "Select",
                 ].map((head) => (
                   <th key={head} className="border border-slate-200 px-2 py-2">{head}</th>
                 ))}
@@ -467,7 +512,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.created_at)}</td>
                   <td className="border border-slate-200 px-2 py-2">{formatDateTime(log.updated_at)}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.farmer_name ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">{log.portal_id ?? log.cnic ?? "-"}</td>
+                  <td className="border border-slate-200 px-2 py-2">{log.farmer_cnic ?? log.cnic ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
                   <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
@@ -476,10 +521,13 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   <td className="border border-slate-200 px-2 py-2">{log.w2 ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.second_godown ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.w3 ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">
-                    <Button type="button" variant="secondary" onClick={() => void handlePrint(log)}>
-                      Print
-                    </Button>
+                  <td className="border border-slate-200 px-2 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedHistoryReceiptIds.includes(log.id)}
+                      onChange={() => toggleHistoryReceiptSelection(log.id)}
+                      aria-label={`Select receipt for ${log.driver_name}`}
+                    />
                   </td>
                 </tr>
               ))}
