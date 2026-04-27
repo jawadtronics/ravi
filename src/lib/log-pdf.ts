@@ -130,7 +130,7 @@ function renderReceiptSection(item: ReceiptPdfItem, showDividerTop = false) {
   const gateEntryTime = formatTimeOnly(log.created_at);
 
   return `
-    <section style="flex:1;box-sizing:border-box;display:flex;flex-direction:column;gap:2.6mm;padding:7mm 9mm 6mm 9mm;background:#ffffff;color:#111827;${showDividerTop ? "border-top:1px solid #111827;" : ""}">
+    <section style="box-sizing:border-box;display:flex;flex-direction:column;gap:2.6mm;padding:7mm 9mm 6mm 9mm;background:#ffffff;color:#111827;${showDividerTop ? "border-top:1px solid #111827;" : ""}">
       <div style="text-align:center;line-height:1.1;">
         <div style="font-size:17px;font-weight:800;letter-spacing:0.03em;text-transform:uppercase;">Center Weightment Slip</div>
         <div style="font-size:14px;font-weight:700;margin-top:1.1mm;">${escapeHtml(displayValue(millName))}</div>
@@ -187,7 +187,7 @@ function renderReceiptSection(item: ReceiptPdfItem, showDividerTop = false) {
         </tbody>
       </table>
 
-      <div style="display:flex;gap:8mm;font-size:11px;line-height:1.2;margin-top:auto;">
+      <div style="display:flex;gap:8mm;font-size:11px;line-height:1.2;margin-top:2mm;">
         <div style="flex:1;display:flex;align-items:center;gap:2mm;">
           <span style="font-weight:700;white-space:nowrap;">Gate Person:</span>
           <span style="flex:1;min-width:0;text-align:center;">${renderLineValue(gatePersonName)}</span>
@@ -208,9 +208,10 @@ function renderPdfPages(items: ReceiptPdfItem[]) {
   for (let index = 0; index < items.length; index += 2) {
     const first = items[index];
     const second = items[index + 1];
+    const hasNextPage = index + 2 < items.length;
 
     pages.push(`
-      <div style="width:210mm;min-height:297mm;box-sizing:border-box;background:#ffffff;display:flex;flex-direction:column;padding:5mm;page-break-after:always;">
+      <div style="width:210mm;box-sizing:border-box;background:#ffffff;padding:5mm;page-break-after:${hasNextPage ? "always" : "auto"};">
         ${renderReceiptSection(first, false)}
         ${second ? renderReceiptSection(second, true) : ""}
       </div>
