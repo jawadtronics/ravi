@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { formatDateTime } from "@/lib/utils";
@@ -380,7 +379,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   "Driver Phone",
                   "Vehicle Number",
                   "Gate Person",
-                  "Car Image",
+                  "Remarks",
                   "Bags",
                   "W1",
                   "W1 Image",
@@ -402,15 +401,7 @@ export function WeightManagerView({ managerId, centerId }: { managerId: string; 
                   <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">{employeeNameById[log.gate_person_id ?? ""] ?? log.gate_person_id ?? "-"}</td>
-                  <td className="border border-slate-200 px-2 py-2">
-                    {log.car_image_url ? (
-                      <a href={log.car_image_url} target="_blank" rel="noreferrer">
-                        <Image src={log.car_image_url} alt="Car" width={72} height={54} className="rounded object-cover" />
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
+                  <td className="border border-slate-200 px-2 py-2">{log.remarks ?? "-"}</td>
                   <td className="border border-slate-200 px-2 py-2">
                     <div className="flex items-center gap-2">
                       <p>{log.expected_bags}</p>

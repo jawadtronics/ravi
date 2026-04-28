@@ -554,7 +554,7 @@ export function AnalyticsView({
                 "Driver Name",
                 "Driver Phone",
                 "Vehicle Number",
-                "Car Image",
+                "Remarks",
                 "Bags",
                 "W1",
                 "Weight 1 Time",
@@ -587,7 +587,7 @@ export function AnalyticsView({
                 <td className="border border-slate-200 px-2 py-2">{log.driver_name}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.driver_phone ?? log.phone ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.vehicle_phone ?? log.car_plate ?? "-"}</td>
-                <td className="border border-slate-200 px-2 py-2">{log.car_image_url ? <a href={log.car_image_url} target="_blank" className="text-amber-700 underline">View</a> : "-"}</td>
+                <td className="border border-slate-200 px-2 py-2">{log.remarks ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.expected_bags}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1 ?? "-"}</td>
                 <td className="border border-slate-200 px-2 py-2">{log.w1_time ? formatDateTime(log.w1_time) : "-"}</td>

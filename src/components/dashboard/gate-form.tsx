@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/browser";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileUpload } from "@/components/dashboard/file-upload";
 
 interface GateFormProps {
   gatePersonId: string;
@@ -21,7 +20,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
   const [driverPhone, setDriverPhone] = useState("");
   const [vehiclePhone, setVehiclePhone] = useState("");
   const [expectedBags, setExpectedBags] = useState("");
-  const [carImageUrl, setCarImageUrl] = useState<string | null>(null);
+  const [remarks, setRemarks] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,11 +29,6 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
     event.preventDefault();
     setError(null);
     setMessage(null);
-
-    if (!carImageUrl) {
-      setError("Car image upload is required.");
-      return;
-    }
 
     setSubmitting(true);
 
@@ -49,7 +43,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
       cnic: farmerCnic,
       phone: driverPhone,
       car_plate: vehiclePhone,
-      car_image_url: carImageUrl,
+      remarks: remarks,
       expected_bags: Number(expectedBags),
       status: "pending",
     });
@@ -66,7 +60,7 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
     setDriverPhone("");
     setVehiclePhone("");
     setExpectedBags("");
-    setCarImageUrl(null);
+    setRemarks("");
     setMessage("Vehicle log submitted successfully.");
     setSubmitting(false);
   }
@@ -106,15 +100,11 @@ export function GateForm({ gatePersonId, centerId }: GateFormProps) {
           />
         </div>
         <div className="md:col-span-2">
-          <FileUpload
-            bucket="wheat-images"
-            folder="car"
-            label="Upload Picture"
-            accept="image/*"
-            value={carImageUrl}
-            allowReplace
-            onUploaded={setCarImageUrl}
-            onRemoved={() => setCarImageUrl(null)}
+          <label className="mb-1 block text-sm font-medium text-slate-700">Remarks</label>
+          <Input
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            placeholder="Enter any remarks or notes"
           />
         </div>
 

@@ -48,7 +48,7 @@ export interface WheatLog {
   phone: string | null;
   address: string | null;
   car_plate: string;
-  car_image_url: string | null;
+  remarks: string | null;
   expected_bags: number;
   second_godown: number | null;
   w1: number | null;
